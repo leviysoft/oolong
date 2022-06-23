@@ -104,7 +104,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case MQ.ScalaCodeIterable(_) => "?"
       case MQ.Subquery(doc)        => "{...}"
       case MQ.Field(field) =>
-        report.errorAndAbort(s"There is not filter condition on field ${field.mkString(".")}")
+        report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
 
   def renderArrays(x: List[MQ] | MQ)(using Quotes): String = x match
     case list: List[MQ @unchecked] => list.map(render).mkString(", ")

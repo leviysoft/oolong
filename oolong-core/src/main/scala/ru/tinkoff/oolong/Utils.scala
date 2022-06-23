@@ -72,6 +72,10 @@ private[oolong] object Utils {
     }
 
     def unapply(using quotes: Quotes)(
+        term: quotes.reflect.Term
+    ): Option[(String, List[String])] = parse(term)
+
+    def unapply(using quotes: Quotes)(
         expr: Expr[_]
     ): Option[(String, List[String])] = {
       import quotes.reflect.*

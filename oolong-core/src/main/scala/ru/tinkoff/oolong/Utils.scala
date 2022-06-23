@@ -8,7 +8,9 @@ private[oolong] object Utils {
     scala.sys.error(s"`$name` should only be used within `compile` macro")
 
   object AsIterable {
-    def unapply[T: Type](expr: Expr[Iterable[T]])(using q: Quotes): Option[Iterable[Expr[T]]] = {
+    def unapply[T: Type](using q: Quotes)(
+        expr: Expr[Iterable[T]]
+    ): Option[Iterable[Expr[T]]] = {
       import q.reflect.*
       def rec(tree: Term): Option[Iterable[Expr[T]]] = tree match {
         case Repeated(elems, _) => Some(elems.map(x => x.asExprOf[T]))
@@ -23,20 +25,12 @@ private[oolong] object Utils {
   }
 
   object AnonfunBlock {
-    def unapply(using quotes: Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.Term)] = {
+    def unapply(using quotes: Quotes)(
+        term: quotes.reflect.Term
+    ): Option[(String, quotes.reflect.Term)] = {
       import quotes.reflect.*
       term match {
-        case Block(
-              List(
-                DefDef(
-                  "$anonfun",
-                  List(List(ValDef(paramName, _, _))),
-                  _,
-                  Some(rhs)
-                )
-              ),
-              Closure(Ident("$anonfun"), _)
-            ) =>
+        case Lambda(ValDef(paramName, _, _) :: Nil, rhs) =>
           Some((paramName, rhs))
         case _ => None
       }
@@ -44,7 +38,9 @@ private[oolong] object Utils {
   }
 
   object AsTerm {
-    def unapply(expr: Expr[Any])(using quotes: Quotes): Option[quotes.reflect.Term] = {
+    def unapply(using quotes: Quotes)(
+        expr: Expr[Any]
+    ): Option[quotes.reflect.Term] = {
       import quotes.reflect.*
       Some(expr.asTerm)
     }

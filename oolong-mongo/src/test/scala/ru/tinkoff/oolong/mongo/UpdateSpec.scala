@@ -34,93 +34,65 @@ class UpdateSpec extends AnyFunSuite {
   ) derives BsonEncoder
 
   test("$set for regular fields") {
-    val q = compileUpdate {
-      update[TestClass]
-        .set(_.intField, 2)
-    }
+    val q = update[TestClass](_.set(_.intField, 2))
 
     assert(q == BsonDocument("$set" -> BsonDocument("intField" -> BsonInt32(2))))
   }
 
   test("$set for Option[_] fields") {
-    val q = compileUpdate {
-      update[TestClass]
-        .setOpt(_.optionField, 2L)
-    }
+    val q = update[TestClass](_.setOpt(_.optionField, 2L))
 
     assert(q == BsonDocument("$set" -> BsonDocument("optionField" -> BsonInt64(2))))
   }
 
   test("$inc") {
-    val q = compileUpdate {
-      update[TestClass]
-        .inc(_.intField, 1)
-    }
+    val q = update[TestClass](_.inc(_.intField, 1))
 
     assert(q == BsonDocument("$inc" -> BsonDocument("intField" -> BsonInt32(1))))
   }
 
   test("$mul") {
-    val q = compileUpdate {
-      update[TestClass]
-        .mul(_.intField, 10)
-    }
+    val q = update[TestClass](_.mul(_.intField, 10))
 
     assert(q == BsonDocument("$mul" -> BsonDocument("intField" -> BsonInt32(10))))
   }
 
   test("$max") {
-    val q = compileUpdate {
-      update[TestClass]
-        .max(_.intField, 10)
-    }
+    val q = update[TestClass](_.max(_.intField, 10))
 
     assert(q == BsonDocument("$max" -> BsonDocument("intField" -> BsonInt32(10))))
   }
 
   test("$min") {
-    val q = compileUpdate {
-      update[TestClass]
-        .min(_.intField, 10)
-    }
+    val q = update[TestClass](_.min(_.intField, 10))
 
     assert(q == BsonDocument("$min" -> BsonDocument("intField" -> BsonInt32(10))))
   }
 
   test("$rename") {
-    val q = compileUpdate {
-      update[TestClass]
-        .rename(_.intField, "newFieldName")
-    }
+    val q = update[TestClass](_.rename(_.intField, "newFieldName"))
 
     assert(q == BsonDocument("$rename" -> BsonDocument("intField" -> BsonString("newFieldName"))))
   }
 
   test("$unset") {
-    val q = compileUpdate {
-      update[TestClass]
-        .unset(_.intField)
-    }
+    val q = update[TestClass](_.unset(_.intField))
 
     assert(q == BsonDocument("$unset" -> BsonDocument("intField" -> BsonString(""))))
   }
 
   test("$setOnInsert") {
-    val q = compileUpdate {
-      update[TestClass]
-        .setOnInsert(_.intField, 14)
-    }
+    val q = update[TestClass](_.setOnInsert(_.intField, 14))
 
     assert(q == BsonDocument("$setOnInsert" -> BsonDocument("intField" -> BsonInt32(14))))
   }
 
   test("several update operators combined") {
-    val q = compileUpdate {
-      update[TestClass]
-        .unset(_.dateField)
+    val q = update[TestClass](
+      _.unset(_.dateField)
         .setOpt(_.optionField, 2L)
         .set(_.intField, 19)
-    }
+    )
 
     assert(
       q == BsonDocument(

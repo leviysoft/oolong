@@ -21,9 +21,7 @@ extension [A](a: Option[A])
    */
   def !! : A = useWithinMacro("!!")
 
-sealed trait UpdateDslNode[A]
-
-class Updater[DocT] extends UpdateDslNode[Nothing] {
+sealed trait Updater[DocT] {
   def set[PropT, ValueT](selectProp: DocT => PropT, value: ValueT)(using
       PropT =:= ValueT
   ): Updater[DocT] =
@@ -49,8 +47,4 @@ class Updater[DocT] extends UpdateDslNode[Nothing] {
   def setOnInsert[PropT, ValueT](selectProp: DocT => PropT, value: ValueT)(using
       PropT =:= ValueT,
   ): Updater[DocT] = useWithinMacro("setOnInsert")
-
 }
-
-def update[A]: Updater[A] =
-  useWithinMacro("update")

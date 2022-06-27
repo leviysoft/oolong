@@ -24,6 +24,15 @@ private[oolong] object Utils {
     }
   }
 
+  object AsSome {
+    def unapply[T: Type](expr: Expr[Option[T]])(using q: Quotes): Option[Expr[T]] = {
+      import q.reflect.*
+      expr.asTerm match
+        case Apply(TypeApply(Select(Ident("Some"), "apply"), _), List(e)) => Some(e.asExprOf[T])
+        case _                                                            => None
+    }
+  }
+
   object AnonfunBlock {
     def unapply(using quotes: Quotes)(
         term: quotes.reflect.Term

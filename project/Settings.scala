@@ -24,7 +24,8 @@ object Settings {
       "-Xtarget:11",
       "-unchecked",
       "-Ykind-projector",
-      "-Xcheck-macros"
+      "-Xcheck-macros",
+      "-Yretain-trees"
     ),
     semanticdbEnabled := true
   )

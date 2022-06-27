@@ -77,8 +77,11 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
     case MU.Constant(s: Any) =>
       s.toString // also limit
 
-    case MU.ScalaCode(_) =>
-      "{...}"
+    case MU.ScalaCode(expr) =>
+      expr match
+        case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
+        case _              => "?"
+
   }
 
   def renderOps(ops: List[String])(op: String) =

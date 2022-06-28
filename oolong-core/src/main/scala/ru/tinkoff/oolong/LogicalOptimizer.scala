@@ -41,7 +41,7 @@ private[oolong] object LogicalOptimizer {
       case QExpr.Lte(x, y)     => QExpr.Lte(optimize(x), optimize(y))
       case QExpr.Eq(x, y)      => QExpr.Eq(optimize(x), optimize(y))
       case QExpr.Plus(x, y)    => QExpr.Plus(optimize(x), optimize(y))
-      case QExpr.Minus(x, y)   => QExpr.Plus(optimize(x), optimize(y))
+      case QExpr.Minus(x, y)   => QExpr.Minus(optimize(x), optimize(y))
       case _                   => ast
     }
   }

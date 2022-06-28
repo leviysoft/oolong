@@ -100,7 +100,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case MQ.Exists(x)            => " { $exists: " + render(x) + " }"
       case MQ.Constant(s: String)  => "\"" + s + "\""
       case MQ.Constant(s: Any)     => s.toString // also limit
-      case MQ.ScalaCode(_)         => "?"
+      case MQ.ScalaCode(code)      => renderCode(code)
       case MQ.ScalaCodeIterable(_) => "?"
       case MQ.Subquery(doc)        => "{...}"
       case MQ.Field(field) =>
@@ -109,6 +109,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   def renderArrays(x: List[MQ] | MQ)(using Quotes): String = x match
     case list: List[MQ @unchecked] => list.map(render).mkString(", ")
     case node: MQ                  => render(node)
+
+  def renderCode(expr: Expr[Any])(using Quotes) = expr match
+    case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
+    case _              => "?"
 
   override def target(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonDocument] =
     import quotes.reflect.*

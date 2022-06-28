@@ -1,6 +1,7 @@
 package ru.tinkoff.oolong.mongo
 
 import java.time.LocalDate
+import java.time.OffsetTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 
@@ -30,8 +31,14 @@ class UpdateSpec extends AnyFunSuite {
 
   case class InnerClass(
       fieldOne: String,
-      fieldTwo: Int
+      fieldTwo: Int,
+      fieldThree: Option[Long] = None,
+      fieldFour: LocalDate = LocalDate.now(),
+      fieldFive: SecondInnerClass,
+      fieldSix: List[String]
   ) derives BsonEncoder
+
+  case class SecondInnerClass(fieldOne: Long = 3L) derives BsonEncoder
 
   test("$set for regular fields") {
     val q = update[TestClass](_.set(_.intField, 2))
@@ -43,6 +50,30 @@ class UpdateSpec extends AnyFunSuite {
     val q = update[TestClass](_.setOpt(_.optionField, 2L))
 
     assert(q == BsonDocument("$set" -> BsonDocument("optionField" -> BsonInt64(2))))
+  }
+
+  test("$set for Option[_] inner class fields") {
+    val q = update[TestClass](
+      _.set(
+        _.optionInnerClassField.!!,
+        lift(InnerClass("some", 2, fieldSix = List("1", "2"), fieldFive = SecondInnerClass()))
+      )
+    )
+
+    assert(
+      q == BsonDocument(
+        "$set" ->
+          BsonDocument(
+            "optionInnerClassField" -> BsonDocument(
+              "fieldOne"  -> BsonString("some"),
+              "fieldTwo"  -> BsonInt32(2),
+              "fieldFour" -> BsonDateTime(LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant.toEpochMilli),
+              "fieldFive" -> BsonDocument("fieldOne" -> BsonInt64(3)),
+              "fieldSix"  -> BsonArray.fromIterable(List(BsonString("1"), BsonString("2"))),
+            )
+          )
+      )
+    )
   }
 
   test("$inc") {

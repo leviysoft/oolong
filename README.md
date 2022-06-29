@@ -6,6 +6,10 @@ This library is insipred by [Quill](https://github.com/zio/zio-protoquill).
 Everything is implemented with Scala 3 macros. Scala 2 is not supported.
 At the moment MongoDB is the only supported document store.
 
+## Community
+
+[Join us on Discord!](https://discord.gg/wjzXb4tEG2)
+
 If you want to contribute please see our [guide for contributors](CONTRIBUTING.md).
 
 ## Overview
@@ -36,12 +40,14 @@ val q: BsonDocument = query[Person](p => p.name == "Joe" && p.address.city == "A
 
 Updates are also supported:
 ```scala
-val q: BsonDocument = compileUpdate {
-    update[Person]
-      .set(_.name, "Alice")
-      .set(_.address.city, "Berlin")
-  }
-// q is {"$set": {"name": "Alice", "address.city": "Berlin"}}
+val q: BsonDocument = update[Person](_
+	.set(_.name, "Alice")
+	.inc(_.age, 5)
+)
+// q is {
+// 	$set: { "name": "Alice" },
+//	$inc: { "age": 5 }
+// }
 ```
 
 ## DSL of oolong

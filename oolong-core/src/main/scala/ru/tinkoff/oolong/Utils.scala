@@ -46,6 +46,24 @@ private[oolong] object Utils {
     }
   }
 
+  object InlinedSubquery {
+    def unapply(using quotes: Quotes)(
+        term: quotes.reflect.Term
+    ): Option[quotes.reflect.Term] = {
+      import quotes.reflect.*
+      term match {
+        case Inlined(_, _, expansion) => unapply(expansion)
+        case Typed(term, _)           => Some(term)
+        case _                        => None
+      }
+    }
+
+    def unapply(expr: Expr[Any])(using quotes: Quotes): Option[quotes.reflect.Term] = {
+      import quotes.reflect.*
+      unapply(expr.asTerm)
+    }
+  }
+
   object AsTerm {
     def unapply(using quotes: Quotes)(
         expr: Expr[Any]
@@ -69,6 +87,11 @@ private[oolong] object Utils {
             loop(next, acc)
           case Ident(name) =>
             Some((name, acc))
+
+          // Ident() can be inlined if queries are composed via "inline def"
+          case Inlined(_, _, expansion) =>
+            loop(expansion, acc)
+
           case _ =>
             None
         }

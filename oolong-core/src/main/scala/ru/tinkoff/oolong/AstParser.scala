@@ -146,6 +146,9 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case AsTerm(Literal(BooleanConstant(c))) =>
         makeConst(c)
 
+      case InlinedSubquery(term) =>
+        parse(term.asExpr)
+
       case _ =>
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }

@@ -80,18 +80,17 @@ val q = query[Person](_.name == "Joe" && unchecked(
 ))
 ```
 
-### Composing queries
+### Reusing queries
 
-At the moment query composition is only supported via `unchecked`:
+It's possible to reuse a query by defining an 'inline def':
 ```scala
-val cityFilter: BsonDocument = query[Person](_.address.!!.city == "Amsterdam")
+inline def cityFilter(doc: Person) = doc.address.!!.city == "Amsterdam"
 
-val q = query[Person](_.name == "Joe" && unchecked(cityFilter))
+val q = query[Person](p => p.name == "Joe" && cityFilter(p))
 ```
 
 ## Coming soon
 
-- better query composition
 - elasticsearch support
 - field renaming 
 - aggregation pipelines for Mongo

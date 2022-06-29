@@ -20,6 +20,10 @@ import ru.tinkoff.oolong.dsl.*
 
 class QuerySpec extends AnyFunSuite {
 
+  trait TestClassAncestor {
+    def intField: Int
+  }
+
   case class TestClass(
       intField: Int,
       stringField: String,
@@ -28,7 +32,7 @@ class QuerySpec extends AnyFunSuite {
       optionField: Option[Long],
       optionInnerClassField: Option[InnerClass],
       listField: List[Double]
-  )
+  ) extends TestClassAncestor
 
   case class InnerClass(
       fieldOne: String,
@@ -303,4 +307,100 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  inline def mySubquery1(doc: TestClass): Boolean = doc.intField == 123
+
+  test("calling an 'inline def' with the '(_)' syntax") {
+
+    val q = query[TestClass](mySubquery1(_))
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+      )
+    )
+  }
+
+  test("calling an 'inline def' with the '(x => f(x))' syntax") {
+
+    val q = query[TestClass](x => mySubquery1(x))
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+      )
+    )
+  }
+
+  test("'inline def' with '!!'") {
+
+    inline def myFilter(doc: TestClass): Boolean = doc.optionField.!! == 123L
+
+    val q = query[TestClass](myFilter(_))
+
+    assert(
+      q == BsonDocument(
+        "optionField" -> BsonDocument("$eq" -> BsonInt64(123))
+      )
+    )
+  }
+
+  test("generic 'inline def' with '<:' constraint") {
+
+    inline def genericSubquery[A <: TestClassAncestor](doc: A): Boolean = doc.intField == 123
+
+    val q = query[TestClass](genericSubquery(_))
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+      )
+    )
+  }
+
+  test("'inline def' without explicit return type") {
+
+    inline def myFilter(doc: TestClass) = doc.intField == 123
+
+    val q = query[TestClass](myFilter(_))
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+      )
+    )
+  }
+
+  test("composing queries via 'inline def' #1") {
+
+    val q = query[TestClass](x => x.stringField == "qqq" && mySubquery1(x))
+
+    assert(
+      q == BsonDocument(
+        "$and" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("stringField" -> BsonDocument("$eq" -> BsonString("qqq"))),
+            BsonDocument("intField"    -> BsonDocument("$eq" -> BsonInt32(123)))
+          )
+        )
+      )
+    )
+  }
+
+  test("composing queries via 'inline def' #2") {
+
+    inline def mySubquery2(tc: TestClass): Boolean = mySubquery1(tc) || tc.intField == 456
+
+    val q = query[TestClass](mySubquery2(_))
+
+    assert(
+      q == BsonDocument(
+        "$or" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(123))),
+            BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(456)))
+          )
+        )
+      )
+    )
+  }
 }

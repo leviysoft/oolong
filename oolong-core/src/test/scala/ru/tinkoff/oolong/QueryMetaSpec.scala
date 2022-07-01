@@ -64,4 +64,25 @@ class QueryMetaSpec extends AnyFunSuite {
     )
   }
 
+  test("QueryMeta is correct if intermediate class meta is not specified") {
+
+    case class LastClass(fieldOne: String)
+    case class IntermediateClass(fieldOne: LastClass)
+    case class FirstClass(fieldOne: String, fieldTwo: IntermediateClass)
+
+    inline given QueryMeta[LastClass] = queryMeta(_.fieldOne -> "FieldOne")
+    inline given QueryMeta[FirstClass] = queryMeta(_.fieldTwo -> "FieldTwo")
+
+    assert(
+      summon[QueryMeta[FirstClass]] == QueryMeta[FirstClass](
+        Map(
+          "fieldTwo"                   -> "FieldTwo",
+          "fieldTwo.fieldOne"          -> "FieldTwo.fieldOne",
+          "fieldTwo.fieldOne.fieldOne" -> "FieldTwo.fieldOne.FieldOne",
+        )
+      )
+    )
+
+  }
+
 }

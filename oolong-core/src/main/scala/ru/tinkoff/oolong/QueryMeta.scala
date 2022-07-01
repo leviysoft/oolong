@@ -15,27 +15,51 @@ def queryMetaImpl[T: Type](expr: Expr[Seq[(T => (Any, String))]])(using q: Quote
   val caseFieldsNames = typeRepr.typeSymbol.caseFields.map(_.name)
   val caseFieldsTypes = typeRepr.typeSymbol.caseFields.map(s => typeRepr.memberType(s).asType)
 
-  val childrenMap: Map[String, Map[String, String]] = caseFieldsNames
-    .zip(caseFieldsTypes)
-    .map { case (name, s) =>
-      s match
-        case '[Option[t]] =>
-          Expr.summon[QueryMeta[t]] match
-            case Some('{ ${ expr0 }: QueryMeta[t] }) =>
-              expr0 match
-                case AsQueryMeta(map) => Some(map).map(name -> _)
-                case _                => None
-            case _ => None
-        case '[t] =>
-          Expr.summon[QueryMeta[t]] match
-            case Some('{ ${ expr0 }: QueryMeta[t] }) =>
-              expr0 match
-                case AsQueryMeta(map) => Some(map).map(name -> _)
-                case _                => None
-            case _ => None
-    }
-    .flatten
-    .toMap
+  def summonChildMeta[T: Type]: Map[String, String] =
+    val typeRepr                       = TypeRepr.of[T]
+    val typeSymbol                     = typeRepr.typeSymbol
+    val caseFieldsName                 = typeSymbol.caseFields.map(_.name)
+    val identityMeta                   = caseFieldsName.zip(caseFieldsName).toMap[String, String]
+    val caseFieldsTypes: List[Type[?]] = typeSymbol.caseFields.map(s => typeRepr.memberType(s).asType)
+    val childrenMeta                   = extractFieldsMap(caseFieldsNames, caseFieldsTypes)
+    merge(identityMeta, childrenMeta)
+
+  end summonChildMeta
+
+  def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]]): Map[String, Map[String, String]] =
+    fieldsNames
+      .zip(fieldsTypes)
+      .map { case (name, s) =>
+        s match
+          case '[Option[t]] =>
+            Expr.summon[QueryMeta[t]] match
+              case Some('{ ${ expr0 }: QueryMeta[t] }) =>
+                expr0 match
+                  case AsQueryMeta(map) => Some(map).map(name -> _)
+                  case _                => None
+              case _
+                  if TypeRepr.of[t].typeSymbol.flags.is(Flags.Case) &&
+                    TypeRepr.of[t].typeSymbol.caseFields.nonEmpty =>
+                Some(name -> summonChildMeta[t])
+              case _ => None
+          case '[t] =>
+            Expr.summon[QueryMeta[t]] match
+              case Some('{ ${ expr0 }: QueryMeta[t] }) =>
+                expr0 match
+                  case AsQueryMeta(map) =>
+                    Some(map).map(name -> _)
+                  case _ => None
+              case _
+                  if TypeRepr.of[t].typeSymbol.flags.is(Flags.Case) &&
+                    TypeRepr.of[t].typeSymbol.caseFields.nonEmpty =>
+                Some(name -> summonChildMeta[t])
+              case _ => None
+      }
+      .flatten
+      .toMap
+  end extractFieldsMap
+
+  val childrenMap = extractFieldsMap(caseFieldsNames, caseFieldsTypes)
 
   val exprList: List[Expr[(T => (Any, String))]] = expr match
     case AsIterable(list) => list.toList

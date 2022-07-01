@@ -85,4 +85,67 @@ class QueryMetaSpec extends AnyFunSuite {
 
   }
 
+  test("QueryMeta is correct for snakeCase") {
+
+    case class CaseClass2(someFieldName: String)
+    case class CaseClass(fieldOne: String, fieldTwo: Int, fieldThree: CaseClass2)
+
+    inline given QueryMeta[CaseClass2] = QueryMeta.snakeCase
+    inline given QueryMeta[CaseClass] = QueryMeta.snakeCase
+
+    assert(
+      summon[QueryMeta[CaseClass]] == QueryMeta[CaseClass](
+        Map(
+          "fieldOne"                 -> "field_one",
+          "fieldTwo"                 -> "field_two",
+          "fieldThree"               -> "field_three",
+          "fieldThree.someFieldName" -> "field_three.some_field_name"
+        )
+      )
+    )
+  }
+
+  test("QueryMeta is correct for camelCase") {
+
+    case class CaseClass(field_one: String, field_two: Int)
+
+    inline given QueryMeta[CaseClass] = QueryMeta.camelCase
+
+    assert(
+      summon[QueryMeta[CaseClass]] == QueryMeta[CaseClass](
+        Map(
+          "field_one" -> "fieldOne",
+          "field_two" -> "fieldTwo"
+        )
+      )
+    )
+  }
+
+  test("QueryMeta is correct for upperCamelCase") {
+
+    case class CaseClass(field_one: String, fieldTwo: Int)
+
+    inline given QueryMeta[CaseClass] = QueryMeta.upperCamelCase
+
+    assert(
+      summon[QueryMeta[CaseClass]] == QueryMeta[CaseClass](
+        Map(
+          "field_one" -> "FieldOne",
+          "fieldTwo"  -> "FieldTwo"
+        )
+      )
+    )
+  }
+
+  test("QueryMeta.identity doesn't change names") {
+
+    case class CaseClass(field_one: String, fieldTwo: Int)
+
+    inline given QueryMeta[CaseClass] = QueryMeta.identity
+
+    assert(
+      summon[QueryMeta[CaseClass]] == QueryMeta[CaseClass](Map.empty[String, String])
+    )
+  }
+
 }

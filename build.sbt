@@ -49,6 +49,18 @@ val `oolong-mongo` = (project in file("oolong-mongo"))
     Test / fork := true
   )
 
+val `oolong-elasticsearch` = (project in file("oolong-elasticsearch"))
+  .settings(Settings.common)
+  .dependsOn(`oolong-core`, `oolong-json`)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest"    % "3.2.11" % Test,
+      "org.slf4j"      % "slf4j-api"    % "1.7.36" % Test,
+      "org.slf4j"      % "slf4j-simple" % "1.7.36" % Test,
+    ),
+    Test / fork := true
+  )
+
 val root = (project in file("."))
   .settings(Settings.common)
   .aggregate(`oolong-bson`, `oolong-core`, `oolong-mongo`)

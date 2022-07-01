@@ -27,4 +27,7 @@ private[oolong] object JsonNode {
   case class Obj(value: Map[String, JsonNode]) extends JsonNode {
     override def render: String = value.map((k, v) => s"\"$k\":${v.render}").mkString("{", ",", "}")
   }
+
+  def obj(head: (String, JsonNode), tail: (String, JsonNode)*): Obj =
+    Obj((head +: tail).to(Map))
 }

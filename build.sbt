@@ -14,6 +14,15 @@ val `oolong-bson` = (project in file("oolong-bson"))
     Test / fork := true,
   )
 
+val `oolong-json` = (project in file("oolong-json"))
+  .settings(Settings.common)
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.apache.commons" % "commons-text" % "1.9"
+    ),
+    Test / fork := true
+  )
+
 val `oolong-core` = (project in file("oolong-core"))
   .settings(Settings.common)
   .dependsOn(`oolong-bson`)

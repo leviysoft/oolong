@@ -165,26 +165,8 @@ def merge(first: Map[String, String], children: Map[String, Map[String, String]]
 object AsQueryMeta:
   def unapply[T](expr: Expr[QueryMeta[T]])(using q: Quotes): Option[Map[String, String]] =
     import q.reflect.*
-    def rec(tree: Term): Option[Map[String, String]] =
-      tree match
-        case Typed(elem, _)      => rec(elem)
-        case Inlined(_, _, elem) => rec(elem)
-        case Apply(_, List(Inlined(_, _, Inlined(_, _, Apply(_, List(Typed(Inlined(_, _, repeated), _))))))) =>
-          rec(repeated)
-        case Repeated(list, _) =>
-          list.map(rec).foldLeft(Some(Map.empty[String, String]): Option[Map[String, String]]) { case (a, b) =>
-            a.flatMap(s => b.map(s ++ _))
-          }
-        case Apply(
-              TypeApply(Select(Ident("Tuple2"), "apply"), _),
-              List(
-                Inlined(None, Nil, Literal(StringConstant(key))),
-                Inlined(None, Nil, Literal(StringConstant(value)))
-              )
-            ) =>
-          Some(Map(key -> value))
-        case _ => None
-
-    rec(expr.asTerm)
+    expr match
+      case '{ QueryMeta(${ map }: Map[String, String]) } => Some(map.valueOrAbort)
+      case _                                             => None
 
 end AsQueryMeta

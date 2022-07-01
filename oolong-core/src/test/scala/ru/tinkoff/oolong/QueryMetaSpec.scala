@@ -148,4 +148,23 @@ class QueryMetaSpec extends AnyFunSuite {
     )
   }
 
+  test("QueryMeta with renaming") {
+    case class CaseClass(field: String)
+    case class CaseClassAnother(fieldOne: String, fieldTwo: Int, fieldThree: CaseClass)
+
+    inline given QueryMeta[CaseClass] = queryMeta[CaseClass](_.field -> "field_new")
+    inline given QueryMeta[CaseClassAnother] = QueryMeta.snakeCase.withRenaming(_.fieldThree -> "field_three_new")
+
+    assert(
+      summon[QueryMeta[CaseClassAnother]] == QueryMeta[CaseClassAnother](
+        Map(
+          "fieldOne"         -> "field_one",
+          "fieldTwo"         -> "field_two",
+          "fieldThree"       -> "field_three_new",
+          "fieldThree.field" -> "field_three_new.field_new",
+        )
+      )
+    )
+  }
+
 }

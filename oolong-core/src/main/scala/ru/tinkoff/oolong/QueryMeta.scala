@@ -7,6 +7,13 @@ import ru.tinkoff.oolong.Utils.*
 
 case class QueryMeta[T](map: Map[String, String])
 
+extension [T](inline q: QueryMeta[T])
+  inline def withRenaming(inline fields: (T => (Any, String))*): QueryMeta[T] = ${
+    withRenamingImpl('q, 'fields)
+  }
+
+end extension
+
 object QueryMeta:
 
   // Adapted from enumeratum: https://github.com/lloydmeta/enumeratum
@@ -60,7 +67,7 @@ end QueryMeta
 
 inline def queryMeta[T](inline fields: (T => (Any, String))*): QueryMeta[T] = ${ queryMetaImpl[T]('fields) }
 
-def queryMetaImpl[T: Type](expr: Expr[Seq[(T => (Any, String))]])(using q: Quotes): Expr[QueryMeta[T]] = {
+private def queryMetaImpl[T: Type](expr: Expr[Seq[(T => (Any, String))]])(using q: Quotes): Expr[QueryMeta[T]] = {
   import q.reflect.*
 
   val typeRepr        = TypeRepr.of[T]
@@ -106,6 +113,21 @@ def queryMetaImpl[T: Type](expr: Expr[Seq[(T => (Any, String))]])(using q: Quote
   '{ QueryMeta.apply[T](${ Expr(resultMap) }) }
 
 }
+
+private def withRenamingImpl[T: Type](meta: Expr[QueryMeta[T]], exprs: Expr[Seq[(T => (Any, String))]])(using
+    q: Quotes
+): Expr[QueryMeta[T]] =
+  import q.reflect.*
+  val oldMeta = meta match
+    case AsQueryMeta(map) => map
+
+  val newMeta = queryMetaImpl[T](exprs) match
+    case AsQueryMeta(map) => map
+
+  val resultMap = oldMeta ++ newMeta
+
+  '{ QueryMeta.apply[T](${ Expr(resultMap) }) }
+end withRenamingImpl
 
 def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(using
     q: Quotes

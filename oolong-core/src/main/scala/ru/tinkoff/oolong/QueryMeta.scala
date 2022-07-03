@@ -189,6 +189,6 @@ object AsQueryMeta:
     import q.reflect.*
     expr match
       case '{ QueryMeta(${ map }: Map[String, String]) } => Some(map.valueOrAbort)
-      case _                                             => None
+      case _                                             => println(expr.asTerm.show(using Printer.TreeStructure)); None
 
 end AsQueryMeta

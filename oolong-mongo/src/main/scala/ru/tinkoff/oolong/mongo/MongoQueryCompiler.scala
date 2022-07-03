@@ -2,6 +2,7 @@ package ru.tinkoff.oolong.mongo
 
 import scala.quoted.Expr
 import scala.quoted.Quotes
+import scala.quoted.Type
 
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
@@ -18,62 +19,73 @@ import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
 
 object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
 
-  override def opt(ast: QExpr)(using quotes: Quotes): MongoQueryNode = {
+  override def opt[Doc: Type](ast: QExpr)(using quotes: Quotes): MongoQueryNode = {
     import quotes.reflect.*
 
-    ast match {
-      case QExpr.Prop(path) => MQ.Field(path)
-      case QExpr.Gte(x, y)  => MQ.OnField(getField(x), MQ.Gte(opt(y)))
-      case QExpr.Lte(x, y)  => MQ.OnField(getField(x), MQ.Lte(opt(y)))
-      case QExpr.Gt(x, y)   => MQ.OnField(getField(x), MQ.Gt(opt(y)))
-      case QExpr.Lt(x, y)   => MQ.OnField(getField(x), MQ.Lt(opt(y)))
-      case QExpr.Eq(x, y)   => MQ.OnField(getField(x), MQ.Eq(opt(y)))
-      case QExpr.Ne(x, y)   => MQ.OnField(getField(x), MQ.Ne(opt(y)))
-      case QExpr.In(x, exprs) =>
-        MQ.OnField(
-          getField(x),
-          MQ.In(handleArrayConds(exprs))
-        )
-      case QExpr.Nin(x, exprs) =>
-        MQ.OnField(
-          getField(x),
-          MQ.Nin(handleArrayConds(exprs))
-        )
-      case QExpr.And(exprs)              => MQ.And(exprs map opt)
-      case QExpr.Or(exprs)               => MQ.Or(exprs map opt)
-      case QExpr.Constant(s)             => MQ.Constant(s)
-      case QExpr.Exists(x, y)            => MQ.OnField(getField(x), MQ.Exists(opt(y)))
-      case QExpr.Size(x, y)              => MQ.OnField(getField(x), MQ.Size(opt(y)))
-      case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
-      case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
-      case QExpr.Subquery(code) =>
-        code match {
-          case '{ $doc: BsonDocument } => MQ.Subquery(doc)
-          case _ =>
-            report.errorAndAbort(s"Expected the subquery inside 'unchecked(...)' to have 'org.mongodb.scala.bson.BsonDocument' type, but the subquery is '${code.show}'")
-        }
-      case not: QExpr.Not => handleInnerNot(not)
-    }
+    val meta: Map[String, String] = Expr.summon[QueryMeta[Doc]] match
+      case Some(expr) =>
+        expr match
+          case AsQueryMeta(meta) => meta
+          case _                 => Map.empty[String, String]
+      case None => Map.empty[String, String]
+
+    def rec(ast: QExpr, renames: Map[String, String] = Map.empty): MongoQueryNode =
+      ast match {
+        case QExpr.Prop(path) => MQ.Field(renames.getOrElse(path, path))
+        case QExpr.Gte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Gte(rec(y)))
+        case QExpr.Lte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Lte(rec(y)))
+        case QExpr.Gt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Gt(rec(y)))
+        case QExpr.Lt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Lt(rec(y)))
+        case QExpr.Eq(x, y)   => MQ.OnField(getField(x)(renames), MQ.Eq(rec(y)))
+        case QExpr.Ne(x, y)   => MQ.OnField(getField(x)(renames), MQ.Ne(rec(y)))
+        case QExpr.In(x, exprs) =>
+          MQ.OnField(
+            getField(x)(renames),
+            MQ.In(handleArrayConds(exprs))
+          )
+        case QExpr.Nin(x, exprs) =>
+          MQ.OnField(
+            getField(x)(renames),
+            MQ.Nin(handleArrayConds(exprs))
+          )
+        case QExpr.And(exprs)              => MQ.And(exprs.map(rec(_, renames)))
+        case QExpr.Or(exprs)               => MQ.Or(exprs.map(rec(_, renames)))
+        case QExpr.Constant(s)             => MQ.Constant(s)
+        case QExpr.Exists(x, y)            => MQ.OnField(getField(x)(renames), MQ.Exists(rec(y)))
+        case QExpr.Size(x, y)              => MQ.OnField(getField(x)(renames), MQ.Size(rec(y)))
+        case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
+        case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
+        case QExpr.Subquery(code) =>
+          code match {
+            case '{ $doc: BsonDocument } => MQ.Subquery(doc)
+            case _ =>
+              report.errorAndAbort(s"Expected the subquery inside 'unchecked(...)' to have 'org.mongodb.scala.bson.BsonDocument' type, but the subquery is '${code.show}'")
+          }
+        case not: QExpr.Not => handleInnerNot(not)(renames)
+      }
+
+    rec(ast, meta)
+
   }
 
-  def getField(f: QExpr)(using quotes: Quotes): MQ.Field =
+  def getField(f: QExpr)(renames: Map[String, String])(using quotes: Quotes): MQ.Field =
     import quotes.reflect.*
     f match
-      case QExpr.Prop(path) => MQ.Field(path)
+      case QExpr.Prop(path) => MQ.Field(renames.getOrElse(path, path))
       case _                => report.errorAndAbort("Field is of wrong type")
 
-  def handleInnerNot(not: QExpr.Not)(using quotes: Quotes): MongoQueryNode =
+  def handleInnerNot(not: QExpr.Not)(renames: Map[String, String])(using quotes: Quotes): MongoQueryNode =
     import quotes.reflect.*
     not.x match
-      case QExpr.Gte(x, y)  => MQ.OnField(getField(x), MQ.Not(MQ.Gte(opt(y))))
-      case QExpr.Lte(x, y)  => MQ.OnField(getField(x), MQ.Not(MQ.Lte(opt(y))))
-      case QExpr.Gt(x, y)   => MQ.OnField(getField(x), MQ.Not(MQ.Gt(opt(y))))
-      case QExpr.Lt(x, y)   => MQ.OnField(getField(x), MQ.Not(MQ.Lt(opt(y))))
-      case QExpr.Eq(x, y)   => MQ.OnField(getField(x), MQ.Not(MQ.Eq(opt(y))))
-      case QExpr.Ne(x, y)   => MQ.OnField(getField(x), MQ.Not(MQ.Ne(opt(y))))
-      case QExpr.Size(x, y) => MQ.OnField(getField(x), MQ.Not(MQ.Size(opt(y))))
-      case QExpr.In(x, y)   => MQ.OnField(getField(x), MQ.Not(MQ.In(handleArrayConds(y))))
-      case QExpr.Nin(x, y)  => MQ.OnField(getField(x), MQ.Not(MQ.Nin(handleArrayConds(y))))
+      case QExpr.Gte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gte(opt(y))))
+      case QExpr.Lte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lte(opt(y))))
+      case QExpr.Gt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gt(opt(y))))
+      case QExpr.Lt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lt(opt(y))))
+      case QExpr.Eq(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Eq(opt(y))))
+      case QExpr.Ne(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Ne(opt(y))))
+      case QExpr.Size(x, y) => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Size(opt(y))))
+      case QExpr.In(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.In(handleArrayConds(y))))
+      case QExpr.Nin(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Nin(handleArrayConds(y))))
       case _                => report.errorAndAbort("Wrong operator inside $not")
 
   def handleArrayConds(x: List[QExpr] | QExpr)(using quotes: Quotes): List[MQ] | MQ =
@@ -84,7 +96,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   override def render(node: MongoQueryNode)(using quotes: Quotes): String =
     import quotes.reflect.*
     node match
-      case MQ.OnField(prop, x)     => "{ " + "\"" + prop.path.mkString(".") + "\"" + ": " + render(x) + " }"
+      case MQ.OnField(prop, x)     => "{ " + "\"" + prop.path + "\"" + ": " + render(x) + " }"
       case MQ.Gte(x)               => "{ $gte: " + render(x) + " }"
       case MQ.Lte(x)               => "{ $lte: " + render(x) + " }"
       case MQ.Gt(x)                => "{ $gt: " + render(x) + " }"
@@ -119,7 +131,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     optRepr match {
       case and: MQ.And         => handleAnd(and)
       case or: MQ.Or           => handleOr(or)
-      case MQ.OnField(prop, x) => '{ BsonDocument(${ Expr(prop.path.mkString(".")) } -> ${ target(x) }) }
+      case MQ.OnField(prop, x) => '{ BsonDocument(${ Expr(prop.path) } -> ${ target(x) }) }
       case MQ.Gte(x) =>
         '{ BsonDocument("$gte" -> ${ handleValues(x) }) }
       case MQ.Lte(x) =>
@@ -210,7 +222,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   def extractField(expr: MongoQueryNode)(using q: Quotes): Expr[String] =
     import q.reflect.*
     expr match
-      case MQ.Field(path) => Expr(path.mkString("."))
+      case MQ.Field(path) => Expr(path)
       case _              => report.errorAndAbort("field should be string")
 
 }

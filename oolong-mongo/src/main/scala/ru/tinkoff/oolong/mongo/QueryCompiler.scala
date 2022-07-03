@@ -48,7 +48,7 @@ private[oolong] def queryImpl[Doc: Type](input: Expr[Doc => Boolean])(using quot
   val ast          = parser.parseQExpr(input)
   val optimizedAst = LogicalOptimizer.optimize(ast)
 
-  val optRepr   = opt(optimizedAst)
+  val optRepr   = opt[Doc](optimizedAst)
   val optimized = optimize(optRepr)
 
   report.info("Optimized AST:\n" + pprint(optimizedAst) + "\nGenerated Mongo query:\n" + render(optimized))

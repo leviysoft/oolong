@@ -15,8 +15,8 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
     ast match {
       case QExpr.Prop(path)               => EQN.Field(path)
       case QExpr.Eq(x, QExpr.Constant(s)) => EQN.Term(getField(x), EQN.Constant(s))
-      case QExpr.And(exprs)               => EQN.And(exprs map opt)
-      case QExpr.Or(exprs)                => EQN.Or(exprs map opt)
+      case QExpr.And(exprs)               => EQN.Bool(must = exprs map opt)
+      case QExpr.Or(exprs)                => EQN.Bool(should = exprs map opt)
       case unhandled                      => report.errorAndAbort("Unprocessable")
     }
   }
@@ -33,8 +33,10 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
     node match {
       case EQN.Term(EQN.Field(path), x) =>
         "{ \"term\": {" + "\"" + path.mkString(".") + "\"" + ": " + render(x) + " } }"
-      case EQN.And(exprs)          => "{ \"must\": [ " + exprs.map(render).mkString(", ") + " ] }"
-      case EQN.Or(exprs)           => "{ \"should\": [ " + exprs.map(render).mkString(", ") + " ] }"
+      case EQN.Bool(must, should, mustNot) =>
+        s"""{"must": [${must.map(render).mkString(", ")}], "should": [${should
+          .map(render)
+          .mkString(", ")}], "must_not": [${mustNot.map(render).mkString(", ")}]}"""
       case EQN.Constant(s: String) => "\"" + s + "\""
       case EQN.Constant(s: Any)    => s.toString
       case EQN.Field(field)        =>
@@ -47,24 +49,14 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
     import quotes.reflect.*
 
     optRepr match {
-      case and: EQN.And =>
+      case bool: EQN.Bool =>
         '{
           JsonNode.obj(
-            "bool" ->
-              JsonNode.obj(
-                "must" ->
-                  JsonNode.Arr(${ Expr.ofSeq(and.exprs.map(target)) })
-              )
-          )
-        }
-      case or: EQN.Or =>
-        '{
-          JsonNode.obj(
-            "bool" ->
-              JsonNode.obj(
-                "should" ->
-                  JsonNode.Arr(${ Expr.ofSeq(or.exprs.map(target)) })
-              )
+            "bool" -> JsonNode.obj(
+              "must"     -> JsonNode.Arr(${ Expr.ofSeq(bool.must.map(target)) }),
+              "should"   -> JsonNode.Arr(${ Expr.ofSeq(bool.should.map(target)) }),
+              "must_not" -> JsonNode.Arr(${ Expr.ofSeq(bool.mustNot.map(target)) }),
+            )
           )
         }
       case EQN.Term(EQN.Field(path), x) =>

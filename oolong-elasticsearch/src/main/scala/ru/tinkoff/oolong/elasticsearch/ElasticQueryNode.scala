@@ -7,7 +7,10 @@ object ElasticQueryNode {
 
   case class Term(field: Field, expr: ElasticQueryNode) extends ElasticQueryNode
 
-  case class And(exprs: List[ElasticQueryNode]) extends ElasticQueryNode
-  case class Or(exprs: List[ElasticQueryNode]) extends ElasticQueryNode
+  case class Bool(
+      must: List[ElasticQueryNode] = Nil,
+      should: List[ElasticQueryNode] = Nil,
+      mustNot: List[ElasticQueryNode] = Nil
+  ) extends ElasticQueryNode
   case class Constant[T](s: T) extends ElasticQueryNode
 }

@@ -50,15 +50,21 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
       case and: EQN.And =>
         '{
           JsonNode.obj(
-            "must" ->
-              JsonNode.Arr(${ Expr.ofSeq(and.exprs.map(target)) })
+            "bool" ->
+              JsonNode.obj(
+                "must" ->
+                  JsonNode.Arr(${ Expr.ofSeq(and.exprs.map(target)) })
+              )
           )
         }
       case or: EQN.Or =>
         '{
           JsonNode.obj(
-            "should" ->
-              JsonNode.Arr(${ Expr.ofSeq(or.exprs.map(target)) })
+            "bool" ->
+              JsonNode.obj(
+                "should" ->
+                  JsonNode.Arr(${ Expr.ofSeq(or.exprs.map(target)) })
+              )
           )
         }
       case EQN.Term(EQN.Field(path), x) =>

@@ -31,6 +31,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           case FieldUpdateExpr.Rename(prop, expr)      => MU.MongoUpdateOp.Rename(MU.Prop(prop.path), opt(expr))
           case FieldUpdateExpr.SetOnInsert(prop, expr) => MU.MongoUpdateOp.SetOnInsert(MU.Prop(prop.path), opt(expr))
           case FieldUpdateExpr.Unset(prop)             => MU.MongoUpdateOp.Unset(MU.Prop(prop.path))
+          case op                                      => report.errorAndAbort(s"Wrong operator inside $op")
         })
       case UExpr.ScalaCode(code) => MU.ScalaCode(code)
       case UExpr.Constant(t)     => MU.Constant(t)
@@ -38,51 +39,54 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
     }
   }
 
-  def render(query: MU)(using quotes: Quotes): String = query match {
-    case MU.Update(ops) =>
-      List(
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Set => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$set"),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Inc => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$inc"),
-        renderOps(ops.collect { case s: MU.MongoUpdateOp.Unset => s }.map(op => render(op.prop) + ": " + "\"\""))(
-          "$unset"
-        ),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Max => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$max"),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Min => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$min"),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Mul => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$mul"),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.Rename => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$rename"),
-        renderOps(
-          ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s }.map(op => render(op.prop) + ": " + render(op.value))
-        )("$setOnInsert")
-      ).flatten
-        .mkString("{\n", ",\n", "\n}")
+  def render(query: MU)(using quotes: Quotes): String =
+    import quotes.reflect.*
+    query match {
+      case MU.Update(ops) =>
+        List(
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Set => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$set"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Inc => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$inc"),
+          renderOps(ops.collect { case s: MU.MongoUpdateOp.Unset => s }.map(op => render(op.prop) + ": " + "\"\""))(
+            "$unset"
+          ),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Max => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$max"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Min => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$min"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Mul => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$mul"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Rename => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$rename"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$setOnInsert")
+        ).flatten
+          .mkString("{\n", ",\n", "\n}")
 
-    case MU.Prop(path) =>
-      "\"" + path.mkString(".") + "\""
+      case MU.Prop(path) =>
+        "\"" + path.mkString(".") + "\""
 
-    case MU.Constant(s: String) =>
-      "\"" + s + "\""
+      case MU.Constant(s: String) =>
+        "\"" + s + "\""
 
-    case MU.Constant(s: Any) =>
-      s.toString // also limit
+      case MU.Constant(s: Any) =>
+        s.toString // also limit
 
-    case MU.ScalaCode(expr) =>
-      expr match
-        case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
-        case _              => "?"
+      case MU.ScalaCode(expr) =>
+        expr match
+          case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
+          case _              => "?"
 
-  }
+      case _ => report.errorAndAbort(s"Wrong term: $query")
+    }
 
   def renderOps(ops: List[String])(op: String) =
     ops match

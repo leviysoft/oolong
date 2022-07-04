@@ -27,7 +27,20 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
       case QExpr.Prop(path) => EQN.Field(path)
       case _                => report.errorAndAbort("Field is of wrong type")
 
-  override def render(node: ElasticQueryNode)(using quotes: Quotes): String = "No-op"
+  override def render(node: ElasticQueryNode)(using quotes: Quotes): String = {
+    import quotes.reflect.*
+
+    node match {
+      case EQN.Term(EQN.Field(path), x) => "{ " + "\"" + path.mkString(".") + "\"" + ": " + render(x) + " }"
+      case EQN.And(exprs)               => "{ $and: [ " + exprs.map(render).mkString(", ") + " ] }"
+      case EQN.Or(exprs)                => "{ $or: [ " + exprs.map(render).mkString(", ") + " ] }"
+      case EQN.Constant(s: String)      => "\"" + s + "\""
+      case EQN.Constant(s: Any)         => s.toString
+      case EQN.Field(field)             =>
+        // TODO: adjust error message
+        report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
+    }
+  }
 
   override def target(optRepr: ElasticQueryNode)(using quotes: Quotes): Expr[JsonNode] = {
     import quotes.reflect.*

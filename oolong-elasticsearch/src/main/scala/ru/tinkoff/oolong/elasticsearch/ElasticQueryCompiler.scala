@@ -1,11 +1,13 @@
 package ru.tinkoff.oolong.elasticsearch
 
+import scala.annotation.nowarn
 import scala.quoted.Expr
 import scala.quoted.Quotes
 
 import org.bson.json.JsonMode
 
 import ru.tinkoff.oolong.*
+import ru.tinkoff.oolong.Utils.*
 import ru.tinkoff.oolong.elasticsearch.ElasticQueryNode as EQN
 
 object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
@@ -15,8 +17,10 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
     ast match {
       case QExpr.Prop(path)               => EQN.Field(path)
       case QExpr.Eq(x, QExpr.Constant(s)) => EQN.Term(getField(x), EQN.Constant(s))
+      case QExpr.Ne(x, QExpr.Constant(s)) => EQN.Bool(mustNot = EQN.Term(getField(x), EQN.Constant(s)) :: Nil)
       case QExpr.And(exprs)               => EQN.Bool(must = exprs map opt)
       case QExpr.Or(exprs)                => EQN.Bool(should = exprs map opt)
+      case QExpr.Not(expr)                => EQN.Bool(mustNot = opt(expr) :: Nil)
       case unhandled                      => report.errorAndAbort("Unprocessable")
     }
   }
@@ -87,4 +91,35 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
         '{ JsonNode.Bool.apply(${ Expr(i: Boolean) }) }
       case _ => report.errorAndAbort(s"Given type is not literal constant")
     }
+
+  override def optimize(query: ElasticQueryNode): ElasticQueryNode = query match {
+    case EQN.Bool(must, should, mustNot) =>
+      val mustBuilder    = List.newBuilder[ElasticQueryNode]
+      val shouldBuilder  = List.newBuilder[ElasticQueryNode].addAll(should.map(optimize))
+      val mustNotBuilder = List.newBuilder[ElasticQueryNode].addAll(mustNot.map(optimize))
+
+      lazy val orCount = must.count {
+        case EQN.Bool.Or(_) => true
+        case _              => false
+      }
+
+      for (mp <- must.map(optimize)) mp match {
+        case EQN.Bool.And(must2) =>
+          must2.foreach(mustBuilder += _)
+        case EQN.Bool.Or(should2) if should.isEmpty && orCount == 1 =>
+          should2.foreach(shouldBuilder += _)
+        // !(a || b || c) => !a && !b && !c
+        case EQN.Bool.Or(should2) if should2.pforall { case EQN.Bool.Not(_) => true } =>
+          should2.foreach { case EQN.Bool.Not(p) =>
+            mustNotBuilder += p
+          }: @nowarn
+        case EQN.Bool.Not(not) =>
+          mustNotBuilder += not
+        case other => mustBuilder += other
+      }
+
+      EQN.Bool(mustBuilder.result, shouldBuilder.result, mustNotBuilder.result)
+
+    case other => other
+  }
 }

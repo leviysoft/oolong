@@ -179,3 +179,7 @@ private[oolong] object Utils:
       def unapply(expr: Expr[Pattern])(using q: Quotes): Option[Pattern] =
         import q.reflect.*
         AsRegexPattern.unapply(expr)
+
+  extension[A] (sq: Seq[A]) {
+    def pforall(pf: PartialFunction[A, Boolean]): Boolean = sq.forall(pf.applyOrElse(_, _ => false))
+  }

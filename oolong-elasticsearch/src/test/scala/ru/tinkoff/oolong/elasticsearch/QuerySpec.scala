@@ -23,4 +23,16 @@ class QuerySpec extends AnyFunSuite {
 
     q.render shouldBe """{"query":{"bool":{"must":[],"should":[{"term":{"field1":"check"}},{"term":{"field2":42}}],"must_not":[]}}}"""
   }
+
+  test("!= query") {
+    val q = query[TestClass](_.field2 != 2)
+
+    q.render shouldBe """{"query":{"bool":{"must":[],"should":[],"must_not":[{"term":{"field2":2}}]}}}"""
+  }
+
+  test("Composite boolean query") {
+    val q = query[TestClass](c => c.field1 == "check" && (c.field2 == 42 || c.field3.innerField == "inner"))
+
+    q.render shouldBe """{"query":{"bool":{"must":[{"term":{"field1":"check"}}],"should":[{"term":{"field2":42}},{"term":{"field3.innerField":"inner"}}],"must_not":[]}}}"""
+  }
 }

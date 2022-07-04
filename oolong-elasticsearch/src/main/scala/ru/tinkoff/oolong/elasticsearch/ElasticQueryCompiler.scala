@@ -31,12 +31,13 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
     import quotes.reflect.*
 
     node match {
-      case EQN.Term(EQN.Field(path), x) => "{ " + "\"" + path.mkString(".") + "\"" + ": " + render(x) + " }"
-      case EQN.And(exprs)               => "{ $and: [ " + exprs.map(render).mkString(", ") + " ] }"
-      case EQN.Or(exprs)                => "{ $or: [ " + exprs.map(render).mkString(", ") + " ] }"
-      case EQN.Constant(s: String)      => "\"" + s + "\""
-      case EQN.Constant(s: Any)         => s.toString
-      case EQN.Field(field)             =>
+      case EQN.Term(EQN.Field(path), x) =>
+        "{ \"term\": {" + "\"" + path.mkString(".") + "\"" + ": " + render(x) + " } }"
+      case EQN.And(exprs)          => "{ \"must\": [ " + exprs.map(render).mkString(", ") + " ] }"
+      case EQN.Or(exprs)           => "{ \"should\": [ " + exprs.map(render).mkString(", ") + " ] }"
+      case EQN.Constant(s: String) => "\"" + s + "\""
+      case EQN.Constant(s: Any)    => s.toString
+      case EQN.Field(field)        =>
         // TODO: adjust error message
         report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
     }

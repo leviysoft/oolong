@@ -35,13 +35,11 @@ private[oolong] object LogicalOptimizer {
     }
 
     ast match {
-      case QExpr.And(children)     => flatten(QExpr.And(children.map(optimize)))
-      case QExpr.Or(children)      => flatten(QExpr.Or(children.map(optimize)))
-      case QExpr.Gte(x, y)         => QExpr.Gte(optimize(x), optimize(y))
-      case QExpr.Lte(x, y)         => QExpr.Lte(optimize(x), optimize(y))
-      case QExpr.Eq(x, y)          => QExpr.Eq(optimize(x), optimize(y))
-      case QExpr.Not(QExpr.Not(e)) => e
-      case _                       => ast
+      case QExpr.And(children)       => flatten(QExpr.And(children.map(optimize)))
+      case QExpr.Or(children)        => flatten(QExpr.Or(children.map(optimize)))
+      case QExpr.Not(QExpr.Not(e))   => e
+      case QExpr.Not(QExpr.Eq(l, r)) => QExpr.Ne(l, r)
+      case _                         => ast
     }
   }
 }

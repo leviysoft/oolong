@@ -31,7 +31,6 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           case FieldUpdateExpr.Rename(prop, expr)      => MU.MongoUpdateOp.Rename(MU.Prop(prop.path), opt(expr))
           case FieldUpdateExpr.SetOnInsert(prop, expr) => MU.MongoUpdateOp.SetOnInsert(MU.Prop(prop.path), opt(expr))
           case FieldUpdateExpr.Unset(prop)             => MU.MongoUpdateOp.Unset(MU.Prop(prop.path))
-          case op                                      => report.errorAndAbort(s"Wrong operator inside $op")
         })
       case UExpr.ScalaCode(code) => MU.ScalaCode(code)
       case UExpr.Constant(t)     => MU.Constant(t)

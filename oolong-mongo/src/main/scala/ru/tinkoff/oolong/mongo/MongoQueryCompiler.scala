@@ -86,18 +86,22 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     import quotes.reflect.*
     def rec(node: MongoQueryNode)(using quotes: Quotes): String =
       node match
-        case MQ.OnField(prop, x)     => "\"" + prop.path.mkString(".") + "\"" + ": " + rec(x)
-        case MQ.Gte(x)               => "{ \"$gte\": " + rec(x) + " }"
-        case MQ.Lte(x)               => "{ \"$lte\": " + rec(x) + " }"
-        case MQ.Gt(x)                => "{ \"$gt\": " + rec(x) + " }"
-        case MQ.Lt(x)                => "{ \"$lt\": " + rec(x) + " }"
-        case MQ.Eq(x)                => rec(x)
-        case MQ.Ne(x)                => "{ \"$ne\": " + rec(x) + " }"
-        case MQ.Not(x)               => "{ \"$not\": " + rec(x) + " }"
-        case MQ.Size(x)              => "{ \"$size\": " + rec(x) + " }"
-        case MQ.In(exprs)            => "{ \"$in\": [" + renderArrays(exprs) + "] }"
-        case MQ.Nin(exprs)           => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
-        case MQ.And(exprs)           => exprs.map(rec).mkString(", ")
+        case MQ.OnField(prop, x) => "\"" + prop.path.mkString(".") + "\"" + ": " + rec(x)
+        case MQ.Gte(x)           => "{ \"$gte\": " + rec(x) + " }"
+        case MQ.Lte(x)           => "{ \"$lte\": " + rec(x) + " }"
+        case MQ.Gt(x)            => "{ \"$gt\": " + rec(x) + " }"
+        case MQ.Lt(x)            => "{ \"$lt\": " + rec(x) + " }"
+        case MQ.Eq(x)            => rec(x)
+        case MQ.Ne(x)            => "{ \"$ne\": " + rec(x) + " }"
+        case MQ.Not(x)           => "{ \"$not\": " + rec(x) + " }"
+        case MQ.Size(x)          => "{ \"$size\": " + rec(x) + " }"
+        case MQ.In(exprs)        => "{ \"$in\": [" + renderArrays(exprs) + "] }"
+        case MQ.Nin(exprs)       => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
+        case MQ.And(exprs) =>
+          val fields = exprs.collect { case q: MQ.OnField => q.field.path.mkString(".") }
+          if (fields.distinct.size < fields.size)
+            "\"$and\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
+          else exprs.map(rec).mkString(", ")
         case MQ.Or(exprs)            => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
         case MQ.Exists(x)            => " { \"$exists\": " + rec(x) + " }"
         case MQ.Constant(s: String)  => "\"" + s + "\""
@@ -181,9 +185,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
 
   def handleAnd(and: MQ.And)(using q: Quotes): Expr[BsonDocument] =
     '{
-      BsonDocument(${
-        Expr.ofList(and.exprs.map(target))
-      }.map(_.asScala).foldLeft(Map.empty[String, BsonValue])(_ ++ _))
+      val exprs: List[BsonDocument] = ${ Expr.ofList(and.exprs.map(target)) }
+      if (exprs.flatMap(_.keySet().asScala).distinct.size < exprs.size)
+        BsonDocument("$and" -> BsonArray.fromIterable(exprs))
+      else BsonDocument(exprs.map(_.asScala.toList).foldLeft(List.empty[(String, BsonValue)])(_ ++ _))
     }
 
   def handleOr(or: MQ.Or)(using q: Quotes): Expr[BsonDocument] =

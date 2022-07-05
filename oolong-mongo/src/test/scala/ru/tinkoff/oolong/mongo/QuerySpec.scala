@@ -160,11 +160,25 @@ class QuerySpec extends AnyFunSuite {
 
   test("$and condition in queries flattens") {
     val q = query[TestClass](f => f.intField == 3 && f.stringField != "some")
-
     assert(
       q == BsonDocument(
         "intField"    -> BsonInt32(3),
         "stringField" -> BsonDocument("$ne" -> BsonString("some"))
+      )
+    )
+  }
+
+  test("$and with field having more than one condition is in full form") {
+    val q = query[TestClass](f => f.intField > 3 && f.intField != 5 && f.optionField.isEmpty)
+    assert(
+      q == BsonDocument(
+        "$and" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("intField"    -> BsonDocument("$gt" -> BsonInt32(3))),
+            BsonDocument("intField"    -> BsonDocument("$ne" -> BsonInt32(5))),
+            BsonDocument("optionField" -> BsonDocument("$exists" -> BsonBoolean(false))),
+          )
+        )
       )
     )
   }

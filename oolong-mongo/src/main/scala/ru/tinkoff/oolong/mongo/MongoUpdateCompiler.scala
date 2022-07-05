@@ -91,7 +91,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
   def renderOps(ops: List[String])(op: String) =
     ops match
       case Nil  => None
-      case list => Some(s"\t $op: { " + list.mkString(", ") + " }")
+      case list => Some(s"\t \"$op\": { " + list.mkString(", ") + " }")
 
   def target(optRepr: MU)(using quotes: Quotes): Expr[BsonDocument] = {
     import quotes.reflect.*

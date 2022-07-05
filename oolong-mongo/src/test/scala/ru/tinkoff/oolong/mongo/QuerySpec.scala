@@ -12,6 +12,7 @@ import org.mongodb.scala.bson.BsonDouble
 import org.mongodb.scala.bson.BsonInt32
 import org.mongodb.scala.bson.BsonInt64
 import org.mongodb.scala.bson.BsonString
+import org.mongodb.scala.bson.BsonValue
 import org.scalatest.funsuite.AnyFunSuite
 
 import ru.tinkoff.oolong.bson.BsonEncoder
@@ -39,11 +40,11 @@ class QuerySpec extends AnyFunSuite {
       fieldTwo: Int
   ) derives BsonEncoder
 
-  test("$eq") {
+  test("$eq is flat bson") {
 
     val q = query[TestClass](_.intField == 2)
 
-    assert(q == BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(2))))
+    assert(q == BsonDocument("intField" -> BsonInt32(2)))
   }
 
   test("$gt") {
@@ -112,15 +113,13 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "dateField" -> BsonDocument(
-          "$eq" -> BsonDateTime(
-            java.util.Date.from(
-              LocalDate
-                .of(2020, 12, 12)
-                .atStartOfDay()
-                .atZone(ZoneOffset.UTC)
-                .toInstant
-            )
+        "dateField" -> BsonDateTime(
+          java.util.Date.from(
+            LocalDate
+              .of(2020, 12, 12)
+              .atStartOfDay()
+              .atZone(ZoneOffset.UTC)
+              .toInstant
           )
         )
       )
@@ -132,9 +131,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "innerClassField" -> BsonDocument(
-          "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
-        )
+        "innerClassField" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
       )
     )
   }
@@ -161,17 +158,13 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
-  test("$and") {
+  test("$and condition in queries flattens") {
     val q = query[TestClass](f => f.intField == 3 && f.stringField != "some")
 
     assert(
       q == BsonDocument(
-        "$and" -> BsonArray.fromIterable(
-          List(
-            BsonDocument("intField"    -> BsonDocument("$eq" -> BsonInt32(3))),
-            BsonDocument("stringField" -> BsonDocument("$ne" -> BsonString("some")))
-          )
-        )
+        "intField"    -> BsonInt32(3),
+        "stringField" -> BsonDocument("$ne" -> BsonString("some"))
       )
     )
   }
@@ -183,7 +176,7 @@ class QuerySpec extends AnyFunSuite {
       q == BsonDocument(
         "$or" -> BsonArray.fromIterable(
           List(
-            BsonDocument("intField"    -> BsonDocument("$eq" -> BsonInt32(3))),
+            BsonDocument("intField"    -> BsonInt32(3)),
             BsonDocument("stringField" -> BsonDocument("$ne" -> BsonString("some")))
           )
         )
@@ -191,12 +184,56 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
-  test("$not") {
+  test("both $and and $or #1") {
+    val q = query[TestClass](f => (f.intField == 3 || f.stringField != "some") && f.listField.isEmpty)
+
+    assert(
+      q == BsonDocument(
+        "$or" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("intField"    -> BsonInt32(3)),
+            BsonDocument("stringField" -> BsonDocument("$ne" -> BsonString("some")))
+          )
+        ),
+        "listField" -> BsonDocument("$size" -> BsonInt32(0))
+      )
+    )
+  }
+
+  test("both $and and $or #2") {
+    val q = query[TestClass](f => f.intField == 3 || f.stringField != "some" && f.listField.isEmpty)
+
+    assert(
+      q == BsonDocument(
+        "$or" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("intField" -> BsonInt32(3)),
+            BsonDocument(
+              "stringField" -> BsonDocument("$ne" -> BsonString("some")),
+              "listField"   -> BsonDocument("$size" -> BsonInt32(0))
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("$not $eq transforms into $ne") {
     val q = query[TestClass](f => !(f.intField == 3))
 
     assert(
       q == BsonDocument(
-        "intField" -> BsonDocument("$not" -> BsonDocument("$eq" -> BsonInt32(3)))
+        "intField" -> BsonDocument("$ne" -> BsonInt32(3))
+      )
+    )
+  }
+
+  test("$not") {
+    val q = query[TestClass](f => !(f.intField > 3))
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$not" -> BsonDocument("$gt" -> BsonInt32(3)))
       )
     )
   }
@@ -215,25 +252,15 @@ class QuerySpec extends AnyFunSuite {
     val q = query[TestClass](
       _.intField == 2 && unchecked(
         BsonDocument(
-          "innerClassField" -> BsonDocument(
-            "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
-          )
+          "innerClassField" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
         )
       )
     )
 
     assert(
       q == BsonDocument(
-        "$and" -> BsonArray.fromIterable(
-          List(
-            BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(2))),
-            BsonDocument(
-              "innerClassField" -> BsonDocument(
-                "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
-              )
-            )
-          )
-        )
+        "intField"        -> BsonInt32(2),
+        "innerClassField" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
       )
     )
 
@@ -242,7 +269,7 @@ class QuerySpec extends AnyFunSuite {
   test("query with !! operator for Option[_] fields") {
     val q = query[TestClass](_.optionInnerClassField.!!.fieldTwo == 2)
 
-    assert(q == BsonDocument("optionInnerClassField.fieldTwo" -> BsonDocument("$eq" -> BsonInt32(2))))
+    assert(q == BsonDocument("optionInnerClassField.fieldTwo" -> BsonInt32(2)))
   }
 
   test("$size with .empty") {
@@ -269,7 +296,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "listField" -> BsonDocument("$eq" -> BsonDouble(1.1))
+        "listField" -> BsonDouble(1.1)
       )
     )
   }
@@ -291,7 +318,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "optionField" -> BsonDocument("$eq" -> BsonInt64(2L))
+        "optionField" -> BsonInt64(2L)
       )
     )
   }
@@ -315,7 +342,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+        "intField" -> BsonInt32(123)
       )
     )
   }
@@ -326,7 +353,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+        "intField" -> BsonInt32(123)
       )
     )
   }
@@ -339,7 +366,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "optionField" -> BsonDocument("$eq" -> BsonInt64(123))
+        "optionField" -> BsonInt64(123)
       )
     )
   }
@@ -352,7 +379,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+        "intField" -> BsonInt32(123)
       )
     )
   }
@@ -365,7 +392,7 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "intField" -> BsonDocument("$eq" -> BsonInt32(123))
+        "intField" -> BsonInt32(123)
       )
     )
   }
@@ -376,12 +403,8 @@ class QuerySpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "$and" -> BsonArray.fromIterable(
-          List(
-            BsonDocument("stringField" -> BsonDocument("$eq" -> BsonString("qqq"))),
-            BsonDocument("intField"    -> BsonDocument("$eq" -> BsonInt32(123)))
-          )
-        )
+        "stringField" -> BsonString("qqq"),
+        "intField"    -> BsonInt32(123)
       )
     )
   }
@@ -396,8 +419,8 @@ class QuerySpec extends AnyFunSuite {
       q == BsonDocument(
         "$or" -> BsonArray.fromIterable(
           List(
-            BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(123))),
-            BsonDocument("intField" -> BsonDocument("$eq" -> BsonInt32(456)))
+            BsonDocument("intField" -> BsonInt32(123)),
+            BsonDocument("intField" -> BsonInt32(456))
           )
         )
       )

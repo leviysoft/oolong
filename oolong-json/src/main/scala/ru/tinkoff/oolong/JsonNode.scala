@@ -28,6 +28,8 @@ private[oolong] object JsonNode {
     override def render: String = value.map((k, v) => s"\"$k\":${v.render}").mkString("{", ",", "}")
   }
 
+  val `null`: JsonNode = Null
+
   def obj(head: (String, JsonNode), tail: (String, JsonNode)*): Obj =
     Obj((head +: tail).to(Map))
 }

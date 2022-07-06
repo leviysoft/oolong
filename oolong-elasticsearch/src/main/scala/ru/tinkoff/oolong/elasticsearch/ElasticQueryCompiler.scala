@@ -19,9 +19,13 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
       case QExpr.Eq(QExpr.Prop(path), QExpr.Constant(s)) => EQN.Term(EQN.Field(path), EQN.Constant(s))
       case QExpr.Ne(QExpr.Prop(path), QExpr.Constant(s)) =>
         EQN.Bool(mustNot = EQN.Term(EQN.Field(path), EQN.Constant(s)) :: Nil)
-      case QExpr.And(exprs)                                     => EQN.Bool(must = exprs map opt)
-      case QExpr.Or(exprs)                                      => EQN.Bool(should = exprs map opt)
-      case QExpr.Not(expr)                                      => EQN.Bool(mustNot = opt(expr) :: Nil)
+      case QExpr.Gte(QExpr.Prop(path), QExpr.Constant(s)) => EQN.Range(EQN.Field(path), gte = Some(EQN.Constant(s)))
+      case QExpr.Lte(QExpr.Prop(path), QExpr.Constant(s)) => EQN.Range(EQN.Field(path), lte = Some(EQN.Constant(s)))
+      case QExpr.Gt(QExpr.Prop(path), QExpr.Constant(s))  => EQN.Range(EQN.Field(path), gt = Some(EQN.Constant(s)))
+      case QExpr.Lt(QExpr.Prop(path), QExpr.Constant(s))  => EQN.Range(EQN.Field(path), lt = Some(EQN.Constant(s)))
+      case QExpr.And(exprs)                               => EQN.Bool(must = exprs map opt)
+      case QExpr.Or(exprs)                                => EQN.Bool(should = exprs map opt)
+      case QExpr.Not(expr)                                => EQN.Bool(mustNot = opt(expr) :: Nil)
       case QExpr.Exists(QExpr.Prop(path), QExpr.Constant(true)) => EQN.Exists(EQN.Field(path))
       case QExpr.Exists(QExpr.Prop(path), QExpr.Constant(false)) =>
         EQN.Bool(mustNot = EQN.Exists(EQN.Field(path)) :: Nil)
@@ -49,12 +53,23 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
       case EQN.Constant(s: Any)    => s.toString
       case EQN.Exists(EQN.Field(path)) =>
         s"""{ "exists": { "field": "${path.mkString(".")}" }}"""
+      case EQN.Range(EQN.Field(path), gt, gte, lt, lte) =>
+        val bounds = Seq(
+          renderKeyMap(""""gt"""", gt),
+          renderKeyMap(""""gte"""", gte),
+          renderKeyMap(""""lt"""", lt),
+          renderKeyMap(""""lte"""", lte)
+        ).flatten
+        s"""{"range": {"${path.mkString(".")}": {${bounds.mkString(",")}}}}"""
       case EQN.Field(field) =>
         // TODO: adjust error message
         report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
       case _ => "AST can't be rendered"
     }
   }
+
+  private def renderKeyMap(key: String, node: Option[ElasticQueryNode])(using quotes: Quotes): Option[String] =
+    node.map(render(_)).map(v => s"""$key:$v""")
 
   override def target(optRepr: ElasticQueryNode)(using quotes: Quotes): Expr[JsonNode] = {
     import quotes.reflect.*
@@ -74,6 +89,19 @@ object ElasticQueryCompiler extends Backend[QExpr, ElasticQueryNode, JsonNode] {
         '{ JsonNode.obj("term" -> JsonNode.obj(${ Expr(path.mkString(".")) } -> ${ handleValues(x) })) }
       case EQN.Exists(EQN.Field(path)) =>
         '{ JsonNode.obj("exists" -> JsonNode.obj("field" -> JsonNode.Str(${ Expr(path.mkString(".")) }))) }
+      case EQN.Range(EQN.Field(path), gt, gte, lt, lte) =>
+        '{
+          JsonNode.obj(
+            "range" -> JsonNode.obj(
+              ${ Expr(path.mkString(".")) } -> JsonNode.obj(
+                "gt"  -> ${ gt.map(handleValues(_)).getOrElse('{ JsonNode.`null` }) },
+                "gte" -> ${ gte.map(handleValues(_)).getOrElse('{ JsonNode.`null` }) },
+                "lt"  -> ${ lt.map(handleValues(_)).getOrElse('{ JsonNode.`null` }) },
+                "lte" -> ${ lte.map(handleValues(_)).getOrElse('{ JsonNode.`null` }) }
+              )
+            )
+          )
+        }
       case _ => report.errorAndAbort("given node can't be in that position")
     }
   }

@@ -47,4 +47,28 @@ class QuerySpec extends AnyFunSuite {
 
     q.render shouldBe """{"query":{"bool":{"must":[],"should":[],"must_not":[{"exists":{"field":"field3.optionalInnerField"}}]}}}"""
   }
+
+  test("> query") {
+    val q = query[TestClass](_.field2 > 4)
+
+    q.render shouldBe """{"query":{"range":{"field2":{"gt":4,"gte":null,"lt":null,"lte":null}}}}"""
+  }
+
+  test(">= query") {
+    val q = query[TestClass](_.field2 >= 4)
+
+    q.render shouldBe """{"query":{"range":{"field2":{"gt":null,"gte":4,"lt":null,"lte":null}}}}"""
+  }
+
+  test("< query") {
+    val q = query[TestClass](_.field2 < 4)
+
+    q.render shouldBe """{"query":{"range":{"field2":{"gt":null,"gte":null,"lt":4,"lte":null}}}}"""
+  }
+
+  test("<= query") {
+    val q = query[TestClass](_.field2 <= 4)
+
+    q.render shouldBe """{"query":{"range":{"field2":{"gt":null,"gte":null,"lt":null,"lte":4}}}}"""
+  }
 }

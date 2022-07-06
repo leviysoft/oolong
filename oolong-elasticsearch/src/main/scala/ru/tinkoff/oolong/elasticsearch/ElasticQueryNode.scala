@@ -38,4 +38,12 @@ object ElasticQueryNode {
       }
     }
   }
+
+  case class Range(
+      field: Field,
+      gt: Option[ElasticQueryNode] = None,
+      gte: Option[ElasticQueryNode] = None,
+      lt: Option[ElasticQueryNode] = None,
+      lte: Option[ElasticQueryNode] = None
+  ) extends ElasticQueryNode
 }

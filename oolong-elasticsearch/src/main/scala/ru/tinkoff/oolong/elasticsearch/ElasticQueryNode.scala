@@ -8,6 +8,8 @@ object ElasticQueryNode {
   case class Term(field: Field, expr: ElasticQueryNode) extends ElasticQueryNode
   case class Constant[T](s: T) extends ElasticQueryNode
 
+  case class Exists(x: ElasticQueryNode) extends ElasticQueryNode
+
   case class Bool(
       must: List[ElasticQueryNode] = Nil,
       should: List[ElasticQueryNode] = Nil,

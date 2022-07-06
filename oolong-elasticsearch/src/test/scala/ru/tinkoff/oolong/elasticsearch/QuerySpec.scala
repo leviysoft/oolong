@@ -35,4 +35,16 @@ class QuerySpec extends AnyFunSuite {
 
     q.render shouldBe """{"query":{"bool":{"must":[{"term":{"field1":"check"}}],"should":[{"term":{"field2":42}},{"term":{"field3.innerField":"inner"}}],"must_not":[]}}}"""
   }
+
+  test(".isDefined query") {
+    val q = query[TestClass](_.field3.optionalInnerField.isDefined)
+
+    q.render shouldBe """{"query":{"exists":{"field":"field3.optionalInnerField"}}}"""
+  }
+
+  test(".isEmpty query") {
+    val q = query[TestClass](_.field3.optionalInnerField.isEmpty)
+
+    q.render shouldBe """{"query":{"bool":{"must":[],"should":[],"must_not":[{"exists":{"field":"field3.optionalInnerField"}}]}}}"""
+  }
 }

@@ -1,7 +1,9 @@
 package oolong
 
 import java.util.regex.Pattern
+import scala.compiletime.asMatchable
 import scala.quoted.Expr
+import scala.util.Try
 
 sealed private[oolong] trait QExpr
 
@@ -56,4 +58,22 @@ private[oolong] object QExpr {
   case class All(x: QExpr, y: List[QExpr] | QExpr) extends QExpr
 
   case class Projection(fields: Vector[String]) extends QExpr
+
+  object NumericConstant {
+
+    /**
+     * Here we guarantee that Constant, Numeric & Class are consistent
+     */
+    transparent inline def unapply(qe: QExpr): Option[(Constant[_], Numeric[_], Class[_])] =
+      qe match {
+        case bc @ Constant(_: Byte)        => Some(bc, Numeric[Byte], classOf[Byte])
+        case cc @ Constant(_: Int)         => Some(cc, Numeric[Int], classOf[Int])
+        case lc @ Constant(_: Long)        => Some(lc, Numeric[Long], classOf[Long])
+        case fc @ Constant(_: Float)       => Some(fc, Numeric[Float], classOf[Float])
+        case dc @ Constant(_: Double)      => Some(dc, Numeric[Double], classOf[Double])
+        case bic @ Constant(_: BigInt)     => Some(bic, Numeric[BigInt], classOf[BigInt])
+        case bdc @ Constant(_: BigDecimal) => Some(bdc, Numeric[BigDecimal], classOf[BigDecimal])
+        case _                             => None
+      }
+  }
 }

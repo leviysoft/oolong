@@ -43,4 +43,37 @@ private[oolong] object LogicalOptimizer {
       case _                            => ast
     }
   }
+
+  def shrink(lhs: QExpr, rhs: QExpr): QExpr =
+    (lhs, rhs) match {
+      // Gt
+      case (
+            QExpr.Gt(QExpr.Prop(l1), QExpr.NumericConstant(lconst, lnum, lclass)),
+            QExpr.Gt(QExpr.Prop(_), QExpr.NumericConstant(rconst, _, rclass))
+          ) if lclass == rclass =>
+        QExpr.Gt(QExpr.Prop(l1), QExpr.Constant(lnum.asInstanceOf[Numeric[Any]].max(lconst.s, rconst.s)))
+
+      // Gte
+      case (
+            QExpr.Gte(QExpr.Prop(l1), QExpr.NumericConstant(lconst, lnum, lclass)),
+            QExpr.Gte(QExpr.Prop(_), QExpr.NumericConstant(rconst, _, rclass))
+          ) if lclass == rclass =>
+        QExpr.Gte(QExpr.Prop(l1), QExpr.Constant(lnum.asInstanceOf[Numeric[Any]].max(lconst.s, rconst.s)))
+
+      // Lt
+      case (
+            QExpr.Lt(QExpr.Prop(l1), QExpr.NumericConstant(lconst, lnum, lclass)),
+            QExpr.Lt(QExpr.Prop(_), QExpr.NumericConstant(rconst, _, rclass))
+          ) if lclass == rclass =>
+        QExpr.Lt(QExpr.Prop(l1), QExpr.Constant(lnum.asInstanceOf[Numeric[Any]].min(lconst.s, rconst.s)))
+
+      // Lte
+      case (
+            QExpr.Lte(QExpr.Prop(l1), QExpr.NumericConstant(lconst, lnum, lclass)),
+            QExpr.Lte(QExpr.Prop(_), QExpr.NumericConstant(rconst, _, rclass))
+          ) if lclass == rclass =>
+        QExpr.Lte(QExpr.Prop(l1), QExpr.Constant(lnum.asInstanceOf[Numeric[Any]].min(lconst.s, rconst.s)))
+
+      case _ => lhs
+    }
 }

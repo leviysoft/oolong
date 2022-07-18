@@ -11,12 +11,13 @@ import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.bson.BsonInt32
 import org.mongodb.scala.bson.BsonInt64
+import org.mongodb.scala.bson.BsonNull
 import org.mongodb.scala.bson.BsonString
 import org.scalatest.funsuite.AnyFunSuite
 
-import ru.tinkoff.oolong.QueryMeta
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
+import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.dsl.*
 
 class UpdateWithMetaSpec extends AnyFunSuite {
@@ -44,6 +45,8 @@ class UpdateWithMetaSpec extends AnyFunSuite {
 
   case class SecondInnerClass(fieldOne: Long = 3L) derives BsonEncoder
 
+  inline given QueryMeta[SecondInnerClass] = QueryMeta.snakeCase
+
   test("$set for regular fields") {
     val q = update[TestClass](_.set(_.intField, 2))
 
@@ -56,29 +59,29 @@ class UpdateWithMetaSpec extends AnyFunSuite {
     assert(q == BsonDocument("$set" -> BsonDocument("option_field" -> BsonInt64(2))))
   }
 
-//  test("$set for Option[_] inner class fields") {
-//    val q = update[TestClass](
-//      _.set(
-//        _.optionInnerClassField.!!,
-//        lift(InnerClass("some", 2, fieldSix = List("1", "2"), fieldFive = SecondInnerClass()))
-//      )
-//    )
-//
-//    assert(
-//      q == BsonDocument(
-//        "$set" ->
-//          BsonDocument(
-//            "option_inner_class_field" -> BsonDocument(
-//              "field_one"  -> BsonString("some"),
-//              "field_two"  -> BsonInt32(2),
-//              "field_four" -> BsonDateTime(LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant.toEpochMilli),
-//              "field_five" -> BsonDocument("field_one" -> BsonInt64(3)),
-//              "field_six"  -> BsonArray.fromIterable(List(BsonString("1"), BsonString("2"))),
-//            )
-//          )
-//      )
-//    )
-//  } //TODO: decide what to do with QueryMeta to codecs
+  test("$set for Option[_] inner class fields") {
+    val q = update[TestClass](
+      _.set(
+        _.optionInnerClassField.!!,
+        lift(InnerClass("some", 2, fieldSix = List("1", "2"), fieldFive = SecondInnerClass()))
+      )
+    )
+
+    assert(
+      q == BsonDocument(
+        "$set" ->
+          BsonDocument(
+            "option_inner_class_field" -> BsonDocument(
+              "field_one"  -> BsonString("some"),
+              "field_two"  -> BsonInt32(2),
+              "field_four" -> BsonDateTime(LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant.toEpochMilli),
+              "field_five" -> BsonDocument("field_one" -> BsonInt64(3)),
+              "field_six"  -> BsonArray.fromIterable(List(BsonString("1"), BsonString("2"))),
+            )
+          )
+      )
+    )
+  }
 
   test("$inc") {
     val q = update[TestClass](_.inc(_.intField, 1))

@@ -14,9 +14,9 @@ import org.mongodb.scala.bson.BsonInt64
 import org.mongodb.scala.bson.BsonString
 import org.scalatest.funsuite.AnyFunSuite
 
-import ru.tinkoff.oolong.QueryMeta
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
+import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.dsl.*
 
 class QueryWithMetaSpec extends AnyFunSuite {
@@ -137,7 +137,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
     assert(
       q == BsonDocument(
         "inner_class_field" -> BsonDocument(
-          "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
+          "$eq" -> BsonDocument("field_one" -> BsonString("one"), "field_two" -> BsonInt32(2))
         )
       )
     )

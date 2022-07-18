@@ -3,8 +3,7 @@ package ru.tinkoff.oolong.bson.derivation
 import java.time.Instant
 import java.time.Year
 
-import org.mongodb.scala.bson.BsonArray
-import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.bson.*
 import org.scalatest.TryValues
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

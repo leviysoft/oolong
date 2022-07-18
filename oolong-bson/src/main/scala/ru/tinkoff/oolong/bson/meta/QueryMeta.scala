@@ -1,9 +1,9 @@
-package ru.tinkoff.oolong
+package ru.tinkoff.oolong.bson.meta
 
 import java.util.regex.Pattern
 import scala.quoted.*
 
-import ru.tinkoff.oolong.Utils.*
+import ru.tinkoff.oolong.bson.utils.*
 
 case class QueryMeta[T](map: Map[String, String])
 
@@ -83,25 +83,7 @@ private def queryMetaImpl[T: Type](expr: Expr[Seq[(T => (Any, String))]])(using 
   val res = exprList
     .map { expr =>
       expr.asTerm.underlyingArgument.asExpr match
-        case AsTerm(
-              Block(
-                List(
-                  DefDef(
-                    "$anonfun",
-                    _,
-                    _,
-                    Some(
-                      Apply(
-                        TypeApply(Select(Apply(_, List(Select(_, old))), "->"), _),
-                        List(Literal(StringConstant(newName)))
-                      )
-                    )
-                  )
-                ),
-                _
-              )
-            ) =>
-          old -> newName
+        case TupleLambda(rename) => rename
         case _ => report.errorAndAbort("Incorrect lambda: " + expr.asTerm.show(using Printer.TreeCode))
     }
     .toMap[String, String]
@@ -179,7 +161,7 @@ end summonChildMeta
 
 def merge(first: Map[String, String], children: Map[String, Map[String, String]]) =
   first.flatMap { case (first, second) =>
-    children.find { case (k, _) => k == first }.map(_._2).getOrElse(Map.empty).map { case (firstA, secondA) =>
+    children.getOrElse(first, Map.empty).map { case (firstA, secondA) =>
       (s"$first.$firstA" -> s"$second.$secondA")
     } + (first -> second)
   }

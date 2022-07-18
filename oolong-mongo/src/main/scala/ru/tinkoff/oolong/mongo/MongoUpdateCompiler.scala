@@ -14,6 +14,8 @@ import org.mongodb.scala.bson.BsonValue
 
 import ru.tinkoff.oolong.*
 import ru.tinkoff.oolong.UExpr.FieldUpdateExpr
+import ru.tinkoff.oolong.bson.meta.AsQueryMeta
+import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.mongo.MongoUpdateNode as MU
 
 object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
@@ -22,11 +24,8 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
     import quotes.reflect.*
 
     val meta: Map[String, String] = Expr.summon[QueryMeta[Doc]] match
-      case Some(expr) =>
-        expr match
-          case AsQueryMeta(meta) => meta
-          case _                 => Map.empty[String, String]
-      case None => Map.empty[String, String]
+      case Some(AsQueryMeta(meta)) => meta
+      case None                    => Map.empty[String, String]
 
     def rec(ast: UExpr, renames: Map[String, String] = Map.empty): MU =
       ast match {

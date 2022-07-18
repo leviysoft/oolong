@@ -1,6 +1,10 @@
-package ru.tinkoff.oolong
+package ru.tinkoff.oolong.bson.meta
 
 import org.scalatest.funsuite.AnyFunSuite
+
+import ru.tinkoff.oolong.bson.meta.*
+import ru.tinkoff.oolong.bson.meta.QueryMeta
+import ru.tinkoff.oolong.bson.meta.queryMeta
 
 class QueryMetaSpec extends AnyFunSuite {
 

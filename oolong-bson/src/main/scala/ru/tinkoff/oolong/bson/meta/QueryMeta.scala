@@ -15,6 +15,12 @@ extension [T](inline q: QueryMeta[T])
 end extension
 
 object QueryMeta:
+  given [T]: FromExpr[QueryMeta[T]] = new FromExpr[QueryMeta[T]]:
+    def unapply(expr: Expr[QueryMeta[T]])(using q: Quotes): Option[QueryMeta[T]] =
+      import q.reflect.*
+      expr match
+        case '{ QueryMeta(${ map }: Map[String, String]) } => Some(QueryMeta[T](map.valueOrAbort))
+        case _                                             => None
 
   // Adapted from enumeratum: https://github.com/lloydmeta/enumeratum
 
@@ -100,13 +106,14 @@ private def withRenamingImpl[T: Type](meta: Expr[QueryMeta[T]], exprs: Expr[Seq[
     q: Quotes
 ): Expr[QueryMeta[T]] =
   import q.reflect.*
-  val oldMeta = meta match
-    case AsQueryMeta(map) => map
+  val oldMeta =
+    meta.value.getOrElse(
+      report.errorAndAbort(s"Please, add `inline` to given QueryMeta[${TypeRepr.of[T].typeSymbol.name}]")
+    )
 
-  val newMeta = queryMetaImpl[T](exprs) match
-    case AsQueryMeta(map) => map
+  val newMeta = queryMetaImpl[T](exprs).valueOrAbort
 
-  val resultMap = oldMeta ++ newMeta
+  val resultMap = oldMeta.map ++ newMeta.map
 
   '{ QueryMeta.apply[T](${ Expr(resultMap) }) }
 end withRenamingImpl
@@ -121,10 +128,14 @@ def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(usin
       s match
         case '[Option[t]] =>
           Expr.summon[QueryMeta[t]] match
-            case Some('{ ${ expr0 }: QueryMeta[t] }) =>
-              expr0 match
-                case AsQueryMeta(map) => Some(map).map(name -> _)
-                case _                => None
+            case Some(expr0) =>
+              Some(
+                name -> expr0.value
+                  .getOrElse(
+                    report.errorAndAbort(s"Please, add `inline` to given QueryMeta[${TypeRepr.of[t].typeSymbol.name}]")
+                  )
+                  .map
+              )
             case _
                 if TypeRepr.of[t].typeSymbol.flags.is(Flags.Case) &&
                   TypeRepr.of[t].typeSymbol.caseFields.nonEmpty =>
@@ -132,11 +143,14 @@ def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(usin
             case _ => None
         case '[t] =>
           Expr.summon[QueryMeta[t]] match
-            case Some('{ ${ expr0 }: QueryMeta[t] }) =>
-              expr0 match
-                case AsQueryMeta(map) =>
-                  Some(map).map(name -> _)
-                case _ => None
+            case Some(expr0) =>
+              Some(
+                name -> expr0.value
+                  .getOrElse(
+                    report.errorAndAbort(s"Please, add `inline` to given QueryMeta[${TypeRepr.of[t].typeSymbol.name}]")
+                  )
+                  .map
+              )
             case _
                 if TypeRepr.of[t].typeSymbol.flags.is(Flags.Case) &&
                   TypeRepr.of[t].typeSymbol.caseFields.nonEmpty =>
@@ -165,12 +179,3 @@ def merge(first: Map[String, String], children: Map[String, Map[String, String]]
       (s"$first.$firstA" -> s"$second.$secondA")
     } + (first -> second)
   }
-
-object AsQueryMeta:
-  def unapply[T](expr: Expr[QueryMeta[T]])(using q: Quotes): Option[Map[String, String]] =
-    import q.reflect.*
-    expr match
-      case '{ QueryMeta(${ map }: Map[String, String]) } => Some(map.valueOrAbort)
-      case _                                             => println(expr.asTerm.show(using Printer.TreeStructure)); None
-
-end AsQueryMeta

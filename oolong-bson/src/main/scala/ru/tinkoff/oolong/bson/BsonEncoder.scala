@@ -7,7 +7,6 @@ import org.bson.BsonNull
 import org.mongodb.scala.bson.*
 
 import ru.tinkoff.oolong.bson.annotation.*
-import ru.tinkoff.oolong.bson.meta.AsQueryMeta
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 
 /**
@@ -39,15 +38,24 @@ object BsonEncoder {
   def constant[T](bv: BsonValue): BsonEncoder[T] =
     (_: T) => bv
 
-  def summonAll[T: Type](using Quotes): List[Expr[BsonEncoder[_]]] =
+  def summonAllForSum[T: Type](using Quotes): List[Expr[BsonEncoder[_]]] =
     import quotes.reflect.*
     Type.of[T] match
       case '[t *: tpes] =>
         Expr.summon[BsonEncoder[t]] match
-          case Some(expr) => expr :: summonAll[tpes]
-          case _          => derivedImpl[t] :: summonAll[tpes]
-      case '[tpe *: tpes] => derivedImpl[tpe] :: summonAll[tpes]
-      case '[EmptyTuple]  => Nil
+          case Some(expr) => expr :: summonAllForSum[tpes]
+          case _          => derivedImpl[t] :: summonAllForSum[tpes]
+      case '[EmptyTuple] => Nil
+
+  def summonAllForProduct[T: Type](using Quotes): List[Expr[BsonEncoder[_]]] =
+    import quotes.reflect.*
+    Type.of[T] match
+      case '[t *: tpes] =>
+        Expr.summon[BsonEncoder[t]] match
+          case Some(expr) => expr :: summonAllForProduct[tpes]
+          case _ =>
+            report.errorAndAbort(s"No given instance of BsonEncoder[${TypeRepr.of[t].typeSymbol.name}] was found")
+      case '[EmptyTuple] => Nil
 
   def productBody[T: Type](
       mirror: Expr[Mirror.ProductOf[T]],
@@ -57,8 +65,11 @@ object BsonEncoder {
     val names        = TypeRepr.of[T].typeSymbol.caseFields.map(_.name)
     val renamingMeta = Expr.summon[QueryMeta[T]]
     val map = renamingMeta match
-      case Some(AsQueryMeta(meta)) => meta
-      case _                       => Map.empty[String, String]
+      case Some(meta) =>
+        meta.value
+          .getOrElse(report.errorAndAbort(s"Please, add `inline` to given QueryMeta[${TypeRepr.of[T].typeSymbol.name}]"))
+          .map
+      case _ => Map.empty[String, String]
     '{
       new BsonEncoder[T] {
         extension (value: T)
@@ -116,10 +127,10 @@ object BsonEncoder {
 
     ev match
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes } } =>
-        val elemInstances = summonAll[elementTypes]
+        val elemInstances = summonAllForProduct[elementTypes]
         productBody[T](m, elemInstances)
       case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes } } =>
-        val elemInstances = summonAll[elementTypes]
+        val elemInstances = summonAllForSum[elementTypes]
         sumBody[T](m, elemInstances)
   end derivedImpl
 }

@@ -16,7 +16,6 @@ import org.mongodb.scala.bson.BsonValue
 
 import ru.tinkoff.oolong.*
 import ru.tinkoff.oolong.bson.*
-import ru.tinkoff.oolong.bson.meta.AsQueryMeta
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
 
@@ -26,8 +25,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     import quotes.reflect.*
 
     val meta: Map[String, String] = Expr.summon[QueryMeta[Doc]] match
-      case Some(AsQueryMeta(meta)) => meta
-      case None                    => Map.empty[String, String]
+      case Some(meta) => meta.valueOrAbort.map
+      case None       => Map.empty[String, String]
 
     def rec(ast: QExpr, renames: Map[String, String] = Map.empty): MongoQueryNode =
       ast match {

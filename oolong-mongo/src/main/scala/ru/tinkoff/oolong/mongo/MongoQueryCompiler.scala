@@ -1,5 +1,6 @@
 package ru.tinkoff.oolong.mongo
 
+import scala.jdk.CollectionConverters.*
 import scala.quoted.Expr
 import scala.quoted.Quotes
 import scala.quoted.Type
@@ -94,43 +95,60 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
 
   override def render(node: MongoQueryNode)(using quotes: Quotes): String =
     import quotes.reflect.*
-    node match
-      case MQ.OnField(prop, x)     => "{ " + "\"" + prop.path + "\"" + ": " + render(x) + " }"
-      case MQ.Gte(x)               => "{ $gte: " + render(x) + " }"
-      case MQ.Lte(x)               => "{ $lte: " + render(x) + " }"
-      case MQ.Gt(x)                => "{ $gt: " + render(x) + " }"
-      case MQ.Lt(x)                => "{ $lt: " + render(x) + " }"
-      case MQ.Eq(x)                => "{ $eq: " + render(x) + " }"
-      case MQ.Ne(x)                => "{ $ne: " + render(x) + " }"
-      case MQ.Not(x)               => "{ $not: " + render(x) + " }"
-      case MQ.Size(x)              => "{ $size: " + render(x) + " }"
-      case MQ.In(exprs)            => "{ $in: [" + renderArrays(exprs) + "] }"
-      case MQ.Nin(exprs)           => "{ $nin: [" + renderArrays(exprs) + "] }"
-      case MQ.And(exprs)           => "{ $and: [ " + exprs.map(render).mkString(", ") + " ] }"
-      case MQ.Or(exprs)            => "{ $or: [ " + exprs.map(render).mkString(", ") + " ] }"
-      case MQ.Exists(x)            => " { $exists: " + render(x) + " }"
-      case MQ.Constant(s: String)  => "\"" + s + "\""
-      case MQ.Constant(s: Any)     => s.toString // also limit
-      case MQ.ScalaCode(code)      => renderCode(code)
-      case MQ.ScalaCodeIterable(_) => "?"
-      case MQ.Subquery(doc)        => "{...}"
-      case MQ.Field(field) =>
-        report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
+    def rec(node: MongoQueryNode)(using quotes: Quotes): String =
+      node match
+        case MQ.OnField(prop, x) => "\"" + prop.path + "\"" + ": " + rec(x)
+        case MQ.Gte(x)           => "{ \"$gte\": " + rec(x) + " }"
+        case MQ.Lte(x)           => "{ \"$lte\": " + rec(x) + " }"
+        case MQ.Gt(x)            => "{ \"$gt\": " + rec(x) + " }"
+        case MQ.Lt(x)            => "{ \"$lt\": " + rec(x) + " }"
+        case MQ.Eq(x)            => rec(x)
+        case MQ.Ne(x)            => "{ \"$ne\": " + rec(x) + " }"
+        case MQ.Not(x)           => "{ \"$not\": " + rec(x) + " }"
+        case MQ.Size(x)          => "{ \"$size\": " + rec(x) + " }"
+        case MQ.In(exprs)        => "{ \"$in\": [" + renderArrays(exprs) + "] }"
+        case MQ.Nin(exprs)       => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
+        case MQ.And(exprs) =>
+          val fields = exprs.collect { case q: MQ.OnField => q.field.path.mkString(".") }
+          if (fields.distinct.size < fields.size)
+            "\"$and\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
+          else exprs.map(rec).mkString(", ")
+        case MQ.Or(exprs)            => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
+        case MQ.Exists(x)            => " { \"$exists\": " + rec(x) + " }"
+        case MQ.Constant(s: String)  => "\"" + s + "\""
+        case MQ.Constant(s: Any)     => s.toString // also limit
+        case MQ.ScalaCode(code)      => renderCode(code)
+        case MQ.ScalaCodeIterable(_) => "?"
+        case MQ.Subquery(_)          => "{...}"
+        case MQ.Field(field) =>
+          report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
+    end rec
 
-  def renderArrays(x: List[MQ] | MQ)(using Quotes): String = x match
-    case list: List[MQ @unchecked] => list.map(render).mkString(", ")
-    case node: MQ                  => render(node)
+    def renderArrays(x: List[MQ] | MQ)(using Quotes): String = x match
+      case list: List[MQ @unchecked] => list.map(rec).mkString(", ")
+      case node: MQ                  => rec(node)
 
-  def renderCode(expr: Expr[Any])(using Quotes) = expr match
-    case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
-    case _              => "?"
+    def renderCode(expr: Expr[Any])(using Quotes) = expr match
+      case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
+      case _              => "?"
+
+    "{ " + rec(node) + " }"
+  end render
 
   override def target(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonDocument] =
     import quotes.reflect.*
     optRepr match {
       case and: MQ.And         => handleAnd(and)
       case or: MQ.Or           => handleOr(or)
-      case MQ.OnField(prop, x) => '{ BsonDocument(${ Expr(prop.path) } -> ${ target(x) }) }
+      case MQ.OnField(prop, x) => '{ BsonDocument(${ Expr(prop.path) } -> ${ parseOperators(x) }) }
+      case MQ.Subquery(doc)    => doc
+      case _                   => report.errorAndAbort("given node can't be in that position")
+    }
+
+  def parseOperators(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonValue] =
+    import quotes.reflect.*
+    optRepr match
+      case MQ.Eq(x) => handleValues(x)
       case MQ.Gte(x) =>
         '{ BsonDocument("$gte" -> ${ handleValues(x) }) }
       case MQ.Lte(x) =>
@@ -139,8 +157,6 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{ BsonDocument("$gt" -> ${ handleValues(x) }) }
       case MQ.Lt(x) =>
         '{ BsonDocument("$lt" -> ${ handleValues(x) }) }
-      case MQ.Eq(x) =>
-        '{ BsonDocument("$eq" -> ${ handleValues(x) }) }
       case MQ.Ne(x) =>
         '{ BsonDocument("$ne" -> ${ handleValues(x) }) }
       case MQ.Size(x) =>
@@ -154,12 +170,11 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
           BsonDocument("$nin" -> ${ handleArrayCond(exprs) })
         }
       case MQ.Not(x) =>
-        '{ BsonDocument("$not" -> ${ target(x) }) }
+        '{ BsonDocument("$not" -> ${ parseOperators(x) }) }
       case MQ.Exists(x) =>
         '{ BsonDocument("$exists" -> ${ handleValues(x) }) }
-      case MQ.Subquery(doc) => doc
-      case _                => report.errorAndAbort("given node can't be in that position")
-    }
+      case _ => report.errorAndAbort(s"Wrong operator: ${optRepr}")
+  end parseOperators
 
   def handleArrayCond(x: List[MQ] | MQ)(using q: Quotes): Expr[BsonValue] =
     import q.reflect.*
@@ -181,9 +196,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
 
   def handleAnd(and: MQ.And)(using q: Quotes): Expr[BsonDocument] =
     '{
-      BsonDocument("$and" -> BsonArray.fromIterable(${
-        Expr.ofList(and.exprs.map(target))
-      }))
+      val exprs: List[BsonDocument] = ${ Expr.ofList(and.exprs.map(target)) }
+      if (exprs.flatMap(_.keySet().asScala).distinct.size < exprs.size)
+        BsonDocument("$and" -> BsonArray.fromIterable(exprs))
+      else BsonDocument(exprs.map(_.asScala.toList).foldLeft(List.empty[(String, BsonValue)])(_ ++ _))
     }
 
   def handleOr(or: MQ.Or)(using q: Quotes): Expr[BsonDocument] =

@@ -47,7 +47,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     val q = query[TestClass](_.intField == 2)
 
-    assert(q == BsonDocument("int_field" -> BsonDocument("$eq" -> BsonInt32(2))))
+    assert(q == BsonDocument("int_field" -> BsonInt32(2)))
   }
 
   test("$gt") {
@@ -116,15 +116,13 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "date_field" -> BsonDocument(
-          "$eq" -> BsonDateTime(
-            java.util.Date.from(
-              LocalDate
-                .of(2020, 12, 12)
-                .atStartOfDay()
-                .atZone(ZoneOffset.UTC)
-                .toInstant
-            )
+        "date_field" -> BsonDateTime(
+          java.util.Date.from(
+            LocalDate
+              .of(2020, 12, 12)
+              .atStartOfDay()
+              .atZone(ZoneOffset.UTC)
+              .toInstant
           )
         )
       )
@@ -136,9 +134,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "inner_class_field" -> BsonDocument(
-          "$eq" -> BsonDocument("field_one" -> BsonString("one"), "field_two" -> BsonInt32(2))
-        )
+        "inner_class_field" -> BsonDocument("field_one" -> BsonString("one"), "field_two" -> BsonInt32(2))
       )
     )
   }
@@ -165,15 +161,25 @@ class QueryWithMetaSpec extends AnyFunSuite {
     )
   }
 
-  test("$and") {
+  test("$and condition in queries flattens") {
     val q = query[TestClass](f => f.intField == 3 && f.stringField != "some")
+    assert(
+      q == BsonDocument(
+        "int_field"    -> BsonInt32(3),
+        "string_field" -> BsonDocument("$ne" -> BsonString("some"))
+      )
+    )
+  }
 
+  test("$and with field having more than one condition is in full form") {
+    val q = query[TestClass](f => f.intField > 3 && f.intField != 5 && f.optionField.isEmpty)
     assert(
       q == BsonDocument(
         "$and" -> BsonArray.fromIterable(
           List(
-            BsonDocument("int_field"    -> BsonDocument("$eq" -> BsonInt32(3))),
-            BsonDocument("string_field" -> BsonDocument("$ne" -> BsonString("some")))
+            BsonDocument("int_field"    -> BsonDocument("$gt" -> BsonInt32(3))),
+            BsonDocument("int_field"    -> BsonDocument("$ne" -> BsonInt32(5))),
+            BsonDocument("option_field" -> BsonDocument("$exists" -> BsonBoolean(false))),
           )
         )
       )
@@ -187,7 +193,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
       q == BsonDocument(
         "$or" -> BsonArray.fromIterable(
           List(
-            BsonDocument("int_field"    -> BsonDocument("$eq" -> BsonInt32(3))),
+            BsonDocument("int_field"    -> BsonInt32(3)),
             BsonDocument("string_field" -> BsonDocument("$ne" -> BsonString("some")))
           )
         )
@@ -195,12 +201,56 @@ class QueryWithMetaSpec extends AnyFunSuite {
     )
   }
 
-  test("$not") {
+  test("both $and and $or #1") {
+    val q = query[TestClass](f => (f.intField == 3 || f.stringField != "some") && f.listField.isEmpty)
+
+    assert(
+      q == BsonDocument(
+        "$or" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("int_field"    -> BsonInt32(3)),
+            BsonDocument("string_field" -> BsonDocument("$ne" -> BsonString("some")))
+          )
+        ),
+        "list_field" -> BsonDocument("$size" -> BsonInt32(0))
+      )
+    )
+  }
+
+  test("both $and and $or #2") {
+    val q = query[TestClass](f => f.intField == 3 || f.stringField != "some" && f.listField.isEmpty)
+
+    assert(
+      q == BsonDocument(
+        "$or" -> BsonArray.fromIterable(
+          List(
+            BsonDocument("int_field" -> BsonInt32(3)),
+            BsonDocument(
+              "string_field" -> BsonDocument("$ne" -> BsonString("some")),
+              "list_field"   -> BsonDocument("$size" -> BsonInt32(0))
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("$not $eq transforms into $ne") {
     val q = query[TestClass](f => !(f.intField == 3))
 
     assert(
       q == BsonDocument(
-        "int_field" -> BsonDocument("$not" -> BsonDocument("$eq" -> BsonInt32(3)))
+        "int_field" -> BsonDocument("$ne" -> BsonInt32(3))
+      )
+    )
+  }
+
+  test("$not") {
+    val q = query[TestClass](f => !(f.intField > 3))
+
+    assert(
+      q == BsonDocument(
+        "int_field" -> BsonDocument("$not" -> BsonDocument("$gt" -> BsonInt32(3)))
       )
     )
   }
@@ -219,25 +269,15 @@ class QueryWithMetaSpec extends AnyFunSuite {
     val q = query[TestClass](
       _.intField == 2 && unchecked(
         BsonDocument(
-          "inner_class_field" -> BsonDocument(
-            "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
-          )
+          "innerClassField" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
         )
       )
     )
 
     assert(
       q == BsonDocument(
-        "$and" -> BsonArray.fromIterable(
-          List(
-            BsonDocument("int_field" -> BsonDocument("$eq" -> BsonInt32(2))),
-            BsonDocument(
-              "inner_class_field" -> BsonDocument(
-                "$eq" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
-              )
-            )
-          )
-        )
+        "int_field"       -> BsonInt32(2),
+        "innerClassField" -> BsonDocument("fieldOne" -> BsonString("one"), "fieldTwo" -> BsonInt32(2))
       )
     )
 
@@ -246,7 +286,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
   test("query with !! operator for Option[_] fields") {
     val q = query[TestClass](_.optionInnerClassField.!!.fieldTwo == 2)
 
-    assert(q == BsonDocument("option_inner_class_field.field_two" -> BsonDocument("$eq" -> BsonInt32(2))))
+    assert(q == BsonDocument("option_inner_class_field.field_two" -> BsonInt32(2)))
   }
 
   test("$size with .empty") {
@@ -273,7 +313,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "list_field" -> BsonDocument("$eq" -> BsonDouble(1.1))
+        "list_field" -> BsonDouble(1.1)
       )
     )
   }
@@ -294,9 +334,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
     val q = query[TestClass](_.optionField.contains(2L))
 
     assert(
-      q == BsonDocument(
-        "option_field" -> BsonDocument("$eq" -> BsonInt64(2L))
-      )
+      q == BsonDocument("option_field" -> BsonInt64(2L))
     )
   }
 
@@ -318,9 +356,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
     val q = query[TestClass](mySubquery1(_))
 
     assert(
-      q == BsonDocument(
-        "int_field" -> BsonDocument("$eq" -> BsonInt32(123))
-      )
+      q == BsonDocument("int_field" -> BsonInt32(123))
     )
   }
 
@@ -330,7 +366,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "int_field" -> BsonDocument("$eq" -> BsonInt32(123))
+        "int_field" -> BsonInt32(123)
       )
     )
   }
@@ -343,7 +379,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "option_field" -> BsonDocument("$eq" -> BsonInt64(123))
+        "option_field" -> BsonInt64(123)
       )
     )
   }
@@ -356,7 +392,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "int_field" -> BsonDocument("$eq" -> BsonInt32(123))
+        "int_field" -> BsonInt32(123)
       )
     )
   }
@@ -369,7 +405,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "int_field" -> BsonDocument("$eq" -> BsonInt32(123))
+        "int_field" -> BsonInt32(123)
       )
     )
   }
@@ -380,12 +416,8 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        "$and" -> BsonArray.fromIterable(
-          List(
-            BsonDocument("string_field" -> BsonDocument("$eq" -> BsonString("qqq"))),
-            BsonDocument("int_field"    -> BsonDocument("$eq" -> BsonInt32(123)))
-          )
-        )
+        "string_field" -> BsonString("qqq"),
+        "int_field"    -> BsonInt32(123)
       )
     )
   }
@@ -400,8 +432,8 @@ class QueryWithMetaSpec extends AnyFunSuite {
       q == BsonDocument(
         "$or" -> BsonArray.fromIterable(
           List(
-            BsonDocument("int_field" -> BsonDocument("$eq" -> BsonInt32(123))),
-            BsonDocument("int_field" -> BsonDocument("$eq" -> BsonInt32(456)))
+            BsonDocument("int_field" -> BsonInt32(123)),
+            BsonDocument("int_field" -> BsonInt32(456))
           )
         )
       )

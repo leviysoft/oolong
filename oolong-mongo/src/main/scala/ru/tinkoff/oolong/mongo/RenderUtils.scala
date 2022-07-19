@@ -58,7 +58,7 @@ private[oolong] object RenderUtils {
         case Some(params -> definitions) =>
           val fields = repr.caseFields.map(_.name)
           val res = fields.zip(params).map { case (name, value) =>
-            name + ":" + " " + parseConstant[A](value.asExpr)(definitions.map { case (a, b) => (a.toString, b) })
+            s"\"$name\"" + ":" + " " + parseConstant[A](value.asExpr)(definitions.map { case (a, b) => (a.toString, b) })
           }
           res.mkString("{", ", ", "}")
         case _ => "?"

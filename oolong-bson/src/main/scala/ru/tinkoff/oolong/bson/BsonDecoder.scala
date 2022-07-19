@@ -96,7 +96,16 @@ object BsonDecoder {
                 for {
                   value <- Option(value.asDocument.getFieldOpt(${ Expr(map) }.getOrElse(name, name)).getOrElse(BsonNull()))
                     .toRight(new RuntimeException(s"Not found value $name"))
-                  result <- instance.asInstanceOf[BsonDecoder[Any]].fromBson(value).toEither
+                  defaults = magnolia1.Macro.defaultValue[T]
+                  result <- instance.asInstanceOf[BsonDecoder[Any]].fromBson(value).toEither match {
+                    case Left(exc) =>
+                      defaults
+                        .find(f => f._1 == name && f._2.isDefined)
+                        .flatMap(_._2)
+                        .map(_())
+                        .toRight(DeserializationError(s"Unable to decode field ${name}", exc))
+                    case otherwise => otherwise
+                  }
                 } yield (result.asInstanceOf[AnyRef])
               } match {
               case (Nil, rights)   => Success(rights)
@@ -108,11 +117,6 @@ object BsonDecoder {
       }
     }
   end toProduct
-
-  private inline def elemLabels[T <: Tuple]: List[String] = inline erasedValue[T] match {
-    case _: EmptyTuple => Nil
-    case _: (t *: ts)  => constValue[t].asInstanceOf[String] :: elemLabels[ts]
-  }
 
   def toSum[T: Type](mirror: Expr[Mirror.SumOf[T]], elemInstances: List[Expr[BsonDecoder[_]]])(using
       q: Quotes

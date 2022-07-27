@@ -29,7 +29,7 @@ private[oolong] object QExpr {
 
   case class Or(children: List[QExpr]) extends QExpr
 
-  case class Prop(path: List[String]) extends QExpr
+  case class Prop(path: String) extends QExpr
 
   case class Constant[T](s: T) extends QExpr
 

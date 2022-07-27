@@ -1,10 +1,13 @@
 package ru.tinkoff.oolong.bson
 
+import java.time.*
+
 import magnolia1.*
 import org.bson.BsonNull
 import org.mongodb.scala.bson.*
 
 import ru.tinkoff.oolong.bson.annotation.*
+import ru.tinkoff.oolong.bson.meta.QueryMeta
 
 /**
  * A type class that provides a conversion from a value of type `T` to a BsonValue
@@ -21,7 +24,7 @@ trait BsonEncoder[T]:
   def beforeWrite[U](f: U => T): BsonEncoder[U] =
     (u: U) => f(u).bson
 
-object BsonEncoder extends Derivation[BsonEncoder] {
+object BsonEncoder {
 
   import scala.compiletime.*
   import scala.deriving.Mirror
@@ -35,38 +38,99 @@ object BsonEncoder extends Derivation[BsonEncoder] {
   def constant[T](bv: BsonValue): BsonEncoder[T] =
     (_: T) => bv
 
-  override def join[T](caseClass: CaseClass[BsonEncoder, T]): BsonEncoder[T] =
-    (value: T) =>
-      BsonDocument(
-        caseClass.params
-          .map { p =>
-            val fieldName =
-              if (p.annotations.isEmpty) p.label
-              else p.annotations.collectFirst { case BsonKey(value) => value }.getOrElse(p.label)
+  def summonAllForSum[T: Type](using Quotes): List[Expr[BsonEncoder[_]]] =
+    import quotes.reflect.*
+    Type.of[T] match
+      case '[t *: tpes] =>
+        Expr.summon[BsonEncoder[t]] match
+          case Some(expr) => expr :: summonAllForSum[tpes]
+          case _          => derivedImpl[t] :: summonAllForSum[tpes]
+      case '[EmptyTuple] => Nil
 
-            given tEnc: Typeclass[p.PType] = p.typeclass
+  def summonAllForProduct[T: Type](using Quotes): List[Expr[BsonEncoder[_]]] =
+    import quotes.reflect.*
+    Type.of[T] match
+      case '[t *: tpes] =>
+        Expr.summon[BsonEncoder[t]] match
+          case Some(expr) => expr :: summonAllForProduct[tpes]
+          case _ =>
+            report.errorAndAbort(s"No given instance of BsonEncoder[${TypeRepr.of[t].typeSymbol.name}] was found")
+      case '[EmptyTuple] => Nil
 
-            fieldName -> p.deref(value).bson
+  def productBody[T: Type](
+      mirror: Expr[Mirror.ProductOf[T]],
+      elemInstances: List[Expr[BsonEncoder[_]]]
+  )(using q: Quotes): Expr[BsonEncoder[T]] =
+    import q.reflect.*
+    val names        = TypeRepr.of[T].typeSymbol.caseFields.map(_.name)
+    val renamingMeta = Expr.summon[QueryMeta[T]]
+    val map = renamingMeta match
+      case Some(meta) =>
+        meta.value
+          .getOrElse(report.errorAndAbort(s"Please, add `inline` to given QueryMeta[${TypeRepr.of[T].typeSymbol.name}]"))
+          .map
+      case _ => Map.empty[String, String]
+    '{
+      new BsonEncoder[T] {
+        extension (value: T)
+          def bson: BsonValue = {
+            val values = value.asInstanceOf[Product].productIterator.toList
+
+            val tuples: List[(String, (BsonEncoder[_], Any))] =
+              ${ Expr(names) } zip (${ Expr.ofList(elemInstances) } zip values)
+
+            BsonDocument(
+              tuples
+                .map { case (name, (instance, value)) =>
+                  ${ Expr(map) }.getOrElse(name, name) -> instance.asInstanceOf[BsonEncoder[Any]].bson(value)
+                }
+                .filterNot(_._2.isNull)
+            )
           }
-          .filterNot(_._2.isNull)
-      )
-
-  override def split[T](sealedTrait: SealedTrait[BsonEncoder, T]): BsonEncoder[T] = (value: T) => {
-    val (discriminatorField, renameFun) =
-      if (sealedTrait.annotations.isEmpty) BsonDiscriminator.ClassNameField -> identity[String] _
-      else
-        sealedTrait.annotations
-          .collectFirst { case BsonDiscriminator(d, rename) => d -> rename }
-          .getOrElse(BsonDiscriminator.ClassNameField -> identity[String] _)
-
-    sealedTrait.choose(value) { st =>
-      implicit val tEnc = st.typeclass
-
-      st.cast(value).bson match {
-        case BDocument(fields) =>
-          BsonDocument(fields + (discriminatorField -> BsonString(renameFun(st.typeInfo.short))))
-        case other => other
       }
     }
-  }
+  end productBody
+
+  def sumBody[T: Type](mirror: Expr[Mirror.SumOf[T]], elemInstances: List[Expr[BsonEncoder[_]]])(using
+      q: Quotes
+  ): Expr[BsonEncoder[T]] =
+    val discriminator = BsonDiscriminator.getAnnotations[T]
+    '{
+      val mirrorV = ${ mirror }
+      new BsonEncoder[T] {
+        extension (value: T) {
+          def bson: BsonValue = {
+            val index = mirrorV.ordinal(value)
+            val doc = ${ Expr.ofList(elemInstances) }
+              .apply(index)
+              .asInstanceOf[BsonEncoder[Any]]
+              .bson(value)
+              .asInstanceOf[BsonDocument]
+            val (discriminatorField, modifyValue) = ${ discriminator }.headOption
+              .map(b => (b.name, b.renameValues))
+              .getOrElse(BsonDiscriminator.ClassNameField -> identity[String])
+            doc.append(
+              discriminatorField,
+              BsonString(modifyValue(value.getClass.getSimpleName))
+            )
+          }
+        }
+      }
+    }
+
+  inline given derived[T]: BsonEncoder[T] = ${ derivedImpl[T] }
+
+  def derivedImpl[T: Type](using q: Quotes): Expr[BsonEncoder[T]] =
+    import quotes.reflect.*
+
+    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
+
+    ev match
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes } } =>
+        val elemInstances = summonAllForProduct[elementTypes]
+        productBody[T](m, elemInstances)
+      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes } } =>
+        val elemInstances = summonAllForSum[elementTypes]
+        sumBody[T](m, elemInstances)
+  end derivedImpl
 }

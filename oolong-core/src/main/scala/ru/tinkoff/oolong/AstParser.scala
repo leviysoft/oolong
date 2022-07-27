@@ -108,7 +108,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         QExpr.Exists(parse(x), QExpr.Constant(true))
 
       case PropSelector(name, path) if name == paramName =>
-        QExpr.Prop(path)
+        QExpr.Prop(path.mkString("."))
 
       case '{ lift($x: t) } =>
         QExpr.ScalaCode(x)
@@ -275,7 +275,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         report.errorAndAbort(s"Expected a lambda, got ${showTerm(input)}")
     }
 
-  private def parsePropSelector[DocT, PropT](select: Expr[DocT => PropT]): List[String] = {
+  private def parsePropSelector[DocT, PropT](select: Expr[DocT => PropT]): String = {
     def extract(lambda: Term): List[String] =
       lambda match {
         case Inlined(_, _, inlined) =>
@@ -286,7 +286,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
           report.errorAndAbort(s"Expected lambda, got ${showTerm(term)}")
       }
 
-    extract(select.asTerm)
+    extract(select.asTerm).mkString(".")
   }
 
 }

@@ -12,7 +12,6 @@ val `oolong-bson` = (project in file("oolong-bson"))
       "org.scalacheck"               %% "scalacheck"       % "1.16.0"   % Test
     ),
     Test / fork := true,
-    Test / scalacOptions += "-Yretain-trees"
   )
 
 val `oolong-core` = (project in file("oolong-core"))

@@ -9,7 +9,7 @@ import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
 sealed trait MongoQueryNode
 
 case object MongoQueryNode {
-  case class Field(path: List[String]) extends MQ
+  case class Field(path: String) extends MQ
 
   case class OnField(field: Field, expr: MQ) extends MQ
 

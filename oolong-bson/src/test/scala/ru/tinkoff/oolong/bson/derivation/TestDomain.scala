@@ -5,15 +5,16 @@ import java.time.Year
 
 import ru.tinkoff.oolong.bson.BsonDecoder
 import ru.tinkoff.oolong.bson.BsonEncoder
-import ru.tinkoff.oolong.bson.annotation.BsonKey
 import ru.tinkoff.oolong.bson.given
+import ru.tinkoff.oolong.bson.meta.QueryMeta
+import ru.tinkoff.oolong.bson.meta.queryMeta
 
 case class TestMeta(time: Instant, seq: Long, flag: Boolean) derives BsonEncoder, BsonDecoder
 
 case class TestCheck(year: Year, comment: String) derives BsonEncoder, BsonDecoder
 
 case class TestEntity(
-    @BsonKey("_id") id: Int,
+    id: Int,
     name: String,
     meta: TestMeta,
     comment: Option[String],
@@ -22,10 +23,14 @@ case class TestEntity(
 ) derives BsonEncoder,
       BsonDecoder
 
+object TestEntity {
+  inline given QueryMeta[TestEntity] = queryMeta(_.id -> "_id")
+}
+
 case class TestContainer[T](value: Option[T]) derives BsonEncoder, BsonDecoder
 
 case class TestEntityWithDefaults(
-    @BsonKey("_id") id: Int,
+    id: Int,
     name: String = "test",
     meta: TestMeta,
     comment: Option[String],
@@ -33,6 +38,10 @@ case class TestEntityWithDefaults(
     checks: Seq[TestCheck] = Seq()
 ) derives BsonEncoder,
       BsonDecoder
+
+object TestEntityWithDefaults {
+  inline given QueryMeta[TestEntityWithDefaults] = queryMeta(_.id -> "_id")
+}
 
 case class XXXCaseClass(
     a: Int,

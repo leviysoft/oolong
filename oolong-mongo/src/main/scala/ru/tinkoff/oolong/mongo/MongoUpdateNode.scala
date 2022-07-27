@@ -7,7 +7,7 @@ import ru.tinkoff.oolong.mongo.MongoUpdateNode as MU
 sealed trait MongoUpdateNode
 
 case object MongoUpdateNode {
-  case class Prop(path: List[String]) extends MU
+  case class Prop(path: String) extends MU
 
   case class Update(setters: List[MongoUpdateOp]) extends MU
 

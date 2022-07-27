@@ -10,7 +10,7 @@ private[oolong] object UExpr {
 
   case class Update(ops: List[FieldUpdateExpr]) extends UExpr
 
-  case class Prop(path: List[String]) extends UExpr
+  case class Prop(path: String) extends UExpr
 
   case class Constant[T](t: T) extends UExpr
 

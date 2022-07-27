@@ -2,13 +2,14 @@ package ru.tinkoff.oolong
 
 import scala.quoted.Expr
 import scala.quoted.Quotes
+import scala.quoted.Type
 
 private[oolong] trait Backend[Ast, OptimizableRepr, TargetRepr] {
 
   /**
    * Translate AST into a form that allows us to do backend optimizations.
    */
-  def opt(ast: Ast)(using quotes: Quotes): OptimizableRepr
+  def opt[Doc: Type](ast: Ast)(using quotes: Quotes): OptimizableRepr
 
   /**
    * Render the final optimized version of a query. Output will be displayed as a compilation message.

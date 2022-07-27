@@ -3,6 +3,7 @@ package ru.tinkoff.oolong.mongo
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.regex.Pattern
 
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
@@ -440,4 +441,111 @@ class QuerySpec extends AnyFunSuite {
       )
     )
   }
+
+  test("regex #1") {
+    val q = query[TestClass](_.stringField.matches("(?ix)SomeString"))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex #2") {
+    val q = query[TestClass](s => Pattern.compile("(?ix)SomeString").matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex #3") {
+    val q = query[TestClass](s =>
+      Pattern.compile("SomeString", Pattern.CASE_INSENSITIVE | Pattern.COMMENTS).matcher(s.stringField).matches()
+    )
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex #4") {
+    val q = query[TestClass](s => Pattern.matches("(?ix)SomeString", s.stringField))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex unknown flags not passed #1") {
+    val q = query[TestClass](_.stringField.matches("(?ixmu)SomeString"))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ixm"))
+      )
+    )
+  }
+
+  test("regex unknown flags not passed #2") {
+    val q = query[TestClass](s => Pattern.compile("(?ixmu)SomeString").matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("imx"))
+      )
+    )
+  }
+
+  test("regex unknown flags not passed #3") {
+    val q = query[TestClass](s =>
+      Pattern
+        .compile("SomeString", Pattern.CASE_INSENSITIVE | Pattern.COMMENTS | Pattern.MULTILINE | Pattern.UNICODE_CASE)
+        .matcher(s.stringField)
+        .matches()
+    )
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("imx"))
+      )
+    )
+  }
+
+  test("regex unknown flags not passed #4") {
+    val q = query[TestClass](s => Pattern.matches("(?ixmu)SomeString", s.stringField))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ixm"))
+      )
+    )
+  }
+
+  test("regex without flags #1") {
+    val q = query[TestClass](s => Pattern.matches("SomeString", s.stringField))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"))
+      )
+    )
+  }
+
+  test("regex without flags #2") {
+    val q = query[TestClass](s => Pattern.compile("SomeString").matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"))
+      )
+    )
+  }
+
+  test("regex without flags #3") {
+    val q = query[TestClass](s => Pattern.matches("SomeString", s.stringField))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"))
+      )
+    )
+  }
+
 }

@@ -47,13 +47,14 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
             getField(x)(renames),
             MQ.Nin(handleArrayConds(exprs))
           )
-        case QExpr.And(exprs)              => MQ.And(exprs.map(rec(_, renames)))
-        case QExpr.Or(exprs)               => MQ.Or(exprs.map(rec(_, renames)))
-        case QExpr.Constant(s)             => MQ.Constant(s)
-        case QExpr.Exists(x, y)            => MQ.OnField(getField(x)(renames), MQ.Exists(rec(y)))
-        case QExpr.Size(x, y)              => MQ.OnField(getField(x)(renames), MQ.Size(rec(y)))
-        case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
-        case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
+        case QExpr.And(exprs)                 => MQ.And(exprs.map(rec(_, renames)))
+        case QExpr.Or(exprs)                  => MQ.Or(exprs.map(rec(_, renames)))
+        case QExpr.Constant(s)                => MQ.Constant(s)
+        case QExpr.Exists(x, y)               => MQ.OnField(getField(x)(renames), MQ.Exists(rec(y)))
+        case QExpr.Size(x, y)                 => MQ.OnField(getField(x)(renames), MQ.Size(rec(y)))
+        case QExpr.Regex(x, pattern, options) => MQ.OnField(getField(x)(renames), MQ.Regex(pattern, options))
+        case QExpr.ScalaCode(code)            => MQ.ScalaCode(code)
+        case QExpr.ScalaCodeIterable(iter)    => MQ.ScalaCodeIterable(iter)
         case QExpr.Subquery(code) =>
           code match {
             case '{ $doc: BsonDocument } => MQ.Subquery(doc)
@@ -76,16 +77,17 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   def handleInnerNot(not: QExpr.Not)(renames: Map[String, String])(using quotes: Quotes): MongoQueryNode =
     import quotes.reflect.*
     not.x match
-      case QExpr.Gte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gte(opt(y))))
-      case QExpr.Lte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lte(opt(y))))
-      case QExpr.Gt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gt(opt(y))))
-      case QExpr.Lt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lt(opt(y))))
-      case QExpr.Eq(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Eq(opt(y))))
-      case QExpr.Ne(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Ne(opt(y))))
-      case QExpr.Size(x, y) => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Size(opt(y))))
-      case QExpr.In(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.In(handleArrayConds(y))))
-      case QExpr.Nin(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Nin(handleArrayConds(y))))
-      case _                => report.errorAndAbort("Wrong operator inside $not")
+      case QExpr.Gte(x, y)      => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gte(opt(y))))
+      case QExpr.Lte(x, y)      => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lte(opt(y))))
+      case QExpr.Gt(x, y)       => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gt(opt(y))))
+      case QExpr.Lt(x, y)       => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lt(opt(y))))
+      case QExpr.Eq(x, y)       => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Eq(opt(y))))
+      case QExpr.Ne(x, y)       => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Ne(opt(y))))
+      case QExpr.Size(x, y)     => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Size(opt(y))))
+      case QExpr.Regex(x, y, z) => MQ.OnField(getField(x)(renames), MQ.Regex(y, z))
+      case QExpr.In(x, y)       => MQ.OnField(getField(x)(renames), MQ.Not(MQ.In(handleArrayConds(y))))
+      case QExpr.Nin(x, y)      => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Nin(handleArrayConds(y))))
+      case _                    => report.errorAndAbort("Wrong operator inside $not")
 
   def handleArrayConds(x: List[QExpr] | QExpr)(using quotes: Quotes): List[MQ] | MQ =
     x match
@@ -105,6 +107,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Ne(x)            => "{ \"$ne\": " + rec(x) + " }"
         case MQ.Not(x)           => "{ \"$not\": " + rec(x) + " }"
         case MQ.Size(x)          => "{ \"$size\": " + rec(x) + " }"
+        case MQ.Regex(x, y)      => "{ \"$regex\": " + x + ", " + y.map(" \"$options\": " + _).getOrElse("") + " }"
         case MQ.In(exprs)        => "{ \"$in\": [" + renderArrays(exprs) + "] }"
         case MQ.Nin(exprs)       => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
         case MQ.And(exprs) =>
@@ -160,6 +163,12 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{ BsonDocument("$ne" -> ${ handleValues(x) }) }
       case MQ.Size(x) =>
         '{ BsonDocument("$size" -> ${ handleValues(x) }) }
+      case MQ.Regex(x, y) =>
+        '{
+          BsonDocument(
+            (Map("$regex" -> BsonString(${ Expr(x) })) ++ ${ Expr(y) }.map("$options" -> BsonString(_))).toList
+          )
+        }
       case MQ.In(exprs) =>
         '{
           BsonDocument("$in" -> ${ handleArrayCond(exprs) })

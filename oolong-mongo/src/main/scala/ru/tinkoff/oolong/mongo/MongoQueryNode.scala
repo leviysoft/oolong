@@ -36,4 +36,6 @@ case object MongoQueryNode {
   case class Exists(x: MQ) extends MQ
 
   case class Size(x: MQ) extends MQ
+
+  case class Regex(x: String, options: Option[String]) extends MQ
 }

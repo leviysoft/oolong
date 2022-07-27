@@ -1,5 +1,7 @@
 package ru.tinkoff.oolong
 
+import java.util.regex.Pattern
+import scala.annotation.tailrec
 import scala.quoted.*
 
 private[oolong] object Utils {
@@ -110,4 +112,56 @@ private[oolong] object Utils {
       parse(expr.asTerm)
     }
   }
+
+  object AsRegexPattern:
+    def unapply(using quotes: Quotes)(
+        expr: Expr[Any]
+    ): Option[Pattern] =
+      import quotes.reflect.*
+
+      val mapNameToFlag: String => Int = {
+        case "UNIX_LINES"              => Pattern.UNIX_LINES
+        case "CASE_INSENSITIVE"        => Pattern.CASE_INSENSITIVE
+        case "COMMENTS"                => Pattern.COMMENTS
+        case "MULTILINE"               => Pattern.MULTILINE
+        case "LITERAL"                 => Pattern.LITERAL
+        case "DOTALL"                  => Pattern.DOTALL
+        case "UNICODE_CASE"            => Pattern.UNICODE_CASE
+        case "UNICODE_CHARACTER_CLASS" => Pattern.UNICODE_CHARACTER_CLASS
+        case _                         => report.errorAndAbort("Unknown regex flag")
+      }
+
+      def parseFlags(term: Term): List[Int] =
+
+        @tailrec
+        def parseFlagsRec(term: Term)(flags: List[Int]): List[Int] =
+          term match
+            case Apply(
+                  term,
+                  List(Select(Ident("Pattern"), flag))
+                ) =>
+              parseFlagsRec(term)(flags :+ mapNameToFlag(flag))
+            case Select(term, "|")              => parseFlagsRec(term)(flags)
+            case Select(Ident("Pattern"), flag) => flags :+ mapNameToFlag(flag)
+        end parseFlagsRec
+
+        parseFlagsRec(term)(List.empty)
+      end parseFlags
+
+      def rec(term: Term) = term match
+        case Apply(Select(Ident("Pattern"), "compile"), List(Literal(StringConstant(pattern)))) =>
+          Some(Pattern.compile(pattern))
+        case Apply(
+              Select(Ident("Pattern"), "compile"),
+              List(
+                Literal(StringConstant(pattern)),
+                patternFlags
+              )
+            ) =>
+          val flags = parseFlags(patternFlags)
+          if (flags.isEmpty) Some(Pattern.compile(pattern))
+          else Some(Pattern.compile(pattern, flags.reduce(_ | _)))
+        case _ => None
+
+      rec(expr.asTerm)
 }

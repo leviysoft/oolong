@@ -88,32 +88,20 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         QExpr.Ne(parse(lhs.asExpr), parse(rhs.asExpr))
 
       case '{ Pattern.matches($s, $x) } =>
-        val regex   = s.value.getOrElse(report.errorAndAbort("regex pattern must be a constant"))
-        val matcher = Pattern.compile("(\\(\\?([a-z]*)\\))?(.*)").matcher(regex)
-        matcher.matches()
-        QExpr.Regex(parse(x), matcher.group(3), Option(matcher.group(2)).map(_.filter("imxs".contains(_))))
+        s.value match
+          case Some(pattern) => QExpr.Regex(parse(x), Pattern.compile(pattern))
+          case _             => QExpr.Regex(parse(x), '{ Pattern.compile($s) })
 
       case '{ (${ s }: Pattern).matcher($x).matches() } =>
         s match
           case AsRegexPattern(pattern) =>
-            val flags = List(
-              if (pattern.flags & Pattern.CASE_INSENSITIVE) != 0 then Some("i") else None,
-              if (pattern.flags & Pattern.MULTILINE) != 0 then Some("m") else None,
-              if (pattern.flags & Pattern.COMMENTS) != 0 then Some("x") else None,
-              if (pattern.flags & Pattern.DOTALL) != 0 then Some("s") else None,
-            ).flatten
-
-            val options = if (flags.isEmpty) None else Some(flags.reduce(_ + _))
-            val matcher = Pattern.compile("(\\(\\?([a-z]*)\\))?(.*)").matcher(pattern.pattern)
-            matcher.matches()
-            QExpr.Regex(parse(x), matcher.group(3), options)
-          case _ => report.errorAndAbort("Pattern is not a constant or not inlined")
+            QExpr.Regex(parse(x), pattern)
+          case _ => QExpr.Regex(parse(x), s)
 
       case '{ ($x: String).matches($s) } =>
-        val regex   = s.value.getOrElse(report.errorAndAbort("regex pattern must be a constant"))
-        val matcher = Pattern.compile("(\\(\\?([a-z]*)\\))?(.*)").matcher(regex)
-        matcher.matches()
-        QExpr.Regex(parse(x), matcher.group(3), Option(matcher.group(2)).map(_.filter("imxs".contains(_))))
+        s.value match
+          case Some(pattern) => QExpr.Regex(parse(x), Pattern.compile(pattern))
+          case _             => QExpr.Regex(parse(x), '{ Pattern.compile($s) })
 
       case '{ type t; ($s: Seq[`t`]).contains($x: `t`) } =>
         QExpr.In(parse(x), parseIterable(s))

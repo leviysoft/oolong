@@ -1,5 +1,6 @@
 package ru.tinkoff.oolong.mongo
 
+import java.util.regex.Pattern
 import scala.quoted.Expr
 
 import org.mongodb.scala.bson.BsonDocument
@@ -37,5 +38,5 @@ case object MongoQueryNode {
 
   case class Size(x: MQ) extends MQ
 
-  case class Regex(x: String, options: Option[String]) extends MQ
+  case class Regex(pattern: Pattern | Expr[Pattern]) extends MQ
 }

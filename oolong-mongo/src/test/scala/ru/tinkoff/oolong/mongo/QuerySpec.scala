@@ -484,7 +484,7 @@ class QuerySpec extends AnyFunSuite {
     val q = query[TestClass](_.stringField.matches("(?ixmu)SomeString"))
     assert(
       q == BsonDocument(
-        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ixm"))
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("imx"))
       )
     )
   }
@@ -516,7 +516,7 @@ class QuerySpec extends AnyFunSuite {
     val q = query[TestClass](s => Pattern.matches("(?ixmu)SomeString", s.stringField))
     assert(
       q == BsonDocument(
-        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ixm"))
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("imx"))
       )
     )
   }
@@ -544,6 +544,62 @@ class QuerySpec extends AnyFunSuite {
     assert(
       q == BsonDocument(
         "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"))
+      )
+    )
+  }
+
+  test("inlined pattern in regex") {
+
+    inline def regex   = "SomeString"
+    inline def pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.COMMENTS)
+
+    val q = query[TestClass](s => pattern.matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex dynamic pattern #1") {
+    def pattern = "(?ix)SomeString"
+    val q       = query[TestClass](_.stringField.matches(pattern))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex dynamic pattern #2") {
+    def regex   = "(?ix)SomeString"
+    def pattern = Pattern.compile(regex)
+    val q       = query[TestClass](s => pattern.matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex dynamic pattern #3") {
+    def regex   = "SomeString"
+    def flags   = Pattern.CASE_INSENSITIVE | Pattern.COMMENTS
+    def pattern = Pattern.compile(regex, flags)
+    val q       = query[TestClass](s => pattern.matcher(s.stringField).matches())
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex dynamic pattern #4") {
+    def pattern = "(?ix)SomeString"
+    val q       = query[TestClass](s => Pattern.matches(pattern, s.stringField))
+    assert(
+      q == BsonDocument(
+        "stringField" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
       )
     )
   }

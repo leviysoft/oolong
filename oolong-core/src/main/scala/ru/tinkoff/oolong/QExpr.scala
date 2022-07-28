@@ -1,5 +1,6 @@
 package ru.tinkoff.oolong
 
+import java.util.regex.Pattern
 import scala.quoted.Expr
 
 import ru.tinkoff.oolong.QExpr
@@ -43,5 +44,5 @@ private[oolong] object QExpr {
 
   case class Size(x: QExpr, y: QExpr) extends QExpr
 
-  case class Regex(x: QExpr, pattern: String, options: Option[String]) extends QExpr
+  case class Regex(x: QExpr, pattern: Pattern | Expr[Pattern]) extends QExpr
 }

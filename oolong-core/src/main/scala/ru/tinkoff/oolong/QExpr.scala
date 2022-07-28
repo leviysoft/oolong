@@ -44,5 +44,5 @@ private[oolong] object QExpr {
 
   case class Size(x: QExpr, y: QExpr) extends QExpr
 
-  case class Regex(x: QExpr, pattern: Pattern | Expr[Pattern]) extends QExpr
+  case class Regex(x: QExpr, pattern: Expr[Pattern]) extends QExpr
 }

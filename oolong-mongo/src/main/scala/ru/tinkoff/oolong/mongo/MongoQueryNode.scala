@@ -38,5 +38,5 @@ case object MongoQueryNode {
 
   case class Size(x: MQ) extends MQ
 
-  case class Regex(pattern: Pattern | Expr[Pattern]) extends MQ
+  case class Regex(pattern: Expr[Pattern]) extends MQ
 }

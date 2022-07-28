@@ -88,20 +88,13 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         QExpr.Ne(parse(lhs.asExpr), parse(rhs.asExpr))
 
       case '{ Pattern.matches($s, $x) } =>
-        s.value match
-          case Some(pattern) => QExpr.Regex(parse(x), Pattern.compile(pattern))
-          case _             => QExpr.Regex(parse(x), '{ Pattern.compile($s) })
+        QExpr.Regex(parse(x), '{ Pattern.compile($s) })
 
       case '{ (${ s }: Pattern).matcher($x).matches() } =>
-        s match
-          case AsRegexPattern(pattern) =>
-            QExpr.Regex(parse(x), pattern)
-          case _ => QExpr.Regex(parse(x), s)
+        QExpr.Regex(parse(x), s)
 
       case '{ ($x: String).matches($s) } =>
-        s.value match
-          case Some(pattern) => QExpr.Regex(parse(x), Pattern.compile(pattern))
-          case _             => QExpr.Regex(parse(x), '{ Pattern.compile($s) })
+        QExpr.Regex(parse(x), '{ Pattern.compile($s) })
 
       case '{ type t; ($s: Seq[`t`]).contains($x: `t`) } =>
         QExpr.In(parse(x), parseIterable(s))

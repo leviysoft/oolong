@@ -4,7 +4,9 @@ import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.quoted.*
 
-private[oolong] object Utils {
+import ru.tinkoff.oolong.Utils.AsRegexPattern
+
+private[oolong] object Utils:
 
   def useWithinMacro(name: String) =
     scala.sys.error(s"`$name` should only be used within `compile` macro")
@@ -173,4 +175,11 @@ private[oolong] object Utils {
         case _ => None
 
       rec(expr.asTerm)
-}
+
+  object PatternInstance:
+    given FromExpr[Pattern] = new FromExpr[Pattern]:
+      def unapply(expr: Expr[Pattern])(using q: Quotes): Option[Pattern] =
+        import q.reflect.*
+        AsRegexPattern.unapply(expr)
+  end PatternInstance
+end Utils

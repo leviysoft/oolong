@@ -16,6 +16,7 @@ import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.bson.BsonValue
 
 import ru.tinkoff.oolong.*
+import ru.tinkoff.oolong.Utils.PatternInstance.given
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
@@ -109,11 +110,11 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Not(x)           => "{ \"$not\": " + rec(x) + " }"
         case MQ.Size(x)          => "{ \"$size\": " + rec(x) + " }"
         case MQ.Regex(pattern) =>
-          pattern match
-            case p: Pattern =>
+          pattern.value match
+            case Some(p: Pattern) =>
               val (pattern, options) = parsePattern(p)
               "{ \"$regex\": \"" + pattern + "\"" + options.map(", \"$options\": \"" + _ + "\"").getOrElse("") + " }"
-            case p: Expr[Pattern] => "{ \"$regex\": \"?\" \"$options\": \"?\" }"
+            case _ => "{ \"$regex\": \"?\" \"$options\": \"?\" }"
 
         case MQ.In(exprs)  => "{ \"$in\": [" + renderArrays(exprs) + "] }"
         case MQ.Nin(exprs) => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
@@ -171,8 +172,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case MQ.Size(x) =>
         '{ BsonDocument("$size" -> ${ handleValues(x) }) }
       case MQ.Regex(p) =>
-        p match
-          case pattern: Pattern =>
+        p.value match
+          case Some(pattern) =>
             val (regex, options) = parsePattern(pattern)
             '{
               BsonDocument(
@@ -180,13 +181,12 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
                   .map("$options" -> BsonString(_))).toList
               )
             }
-          case p: Expr[Pattern] =>
+          case _ =>
             '{
               val (regex, options) = parsePattern(${ p })
-              BsonDocument(
-                (Map("$regex" -> BsonString(regex)) ++ options.map("$options" -> BsonString(_))).toList
-              )
+              BsonDocument((Map("$regex" -> BsonString(regex)) ++ options.map("$options" -> BsonString(_))).toList)
             }
+
       case MQ.In(exprs) =>
         '{
           BsonDocument("$in" -> ${ handleArrayCond(exprs) })

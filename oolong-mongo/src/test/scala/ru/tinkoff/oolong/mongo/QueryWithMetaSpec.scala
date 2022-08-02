@@ -3,6 +3,7 @@ package ru.tinkoff.oolong.mongo
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.util.regex.Pattern
 
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
@@ -436,6 +437,24 @@ class QueryWithMetaSpec extends AnyFunSuite {
             BsonDocument("int_field" -> BsonInt32(456))
           )
         )
+      )
+    )
+  }
+
+  test("regex with options") {
+    val q = query[TestClass](_.stringField.matches("(?ix)SomeString"))
+    assert(
+      q == BsonDocument(
+        "string_field" -> BsonDocument("$regex" -> BsonString("SomeString"), "$options" -> BsonString("ix"))
+      )
+    )
+  }
+
+  test("regex without options") {
+    val q = query[TestClass](s => Pattern.matches("SomeString", s.stringField))
+    assert(
+      q == BsonDocument(
+        "string_field" -> BsonDocument("$regex" -> BsonString("SomeString"))
       )
     )
   }

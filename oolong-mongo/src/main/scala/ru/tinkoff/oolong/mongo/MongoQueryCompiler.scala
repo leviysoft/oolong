@@ -1,5 +1,6 @@
 package ru.tinkoff.oolong.mongo
 
+import java.util.regex.Pattern
 import scala.jdk.CollectionConverters.*
 import scala.quoted.Expr
 import scala.quoted.Quotes
@@ -15,6 +16,7 @@ import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.bson.BsonValue
 
 import ru.tinkoff.oolong.*
+import ru.tinkoff.oolong.Utils.PatternInstance.given
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
@@ -52,6 +54,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case QExpr.Constant(s)             => MQ.Constant(s)
         case QExpr.Exists(x, y)            => MQ.OnField(getField(x)(renames), MQ.Exists(rec(y)))
         case QExpr.Size(x, y)              => MQ.OnField(getField(x)(renames), MQ.Size(rec(y)))
+        case QExpr.Regex(x, pattern)       => MQ.OnField(getField(x)(renames), MQ.Regex(pattern))
         case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
         case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
         case QExpr.Subquery(code) =>
@@ -76,16 +79,17 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   def handleInnerNot(not: QExpr.Not)(renames: Map[String, String])(using quotes: Quotes): MongoQueryNode =
     import quotes.reflect.*
     not.x match
-      case QExpr.Gte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gte(opt(y))))
-      case QExpr.Lte(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lte(opt(y))))
-      case QExpr.Gt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gt(opt(y))))
-      case QExpr.Lt(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lt(opt(y))))
-      case QExpr.Eq(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Eq(opt(y))))
-      case QExpr.Ne(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Ne(opt(y))))
-      case QExpr.Size(x, y) => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Size(opt(y))))
-      case QExpr.In(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.In(handleArrayConds(y))))
-      case QExpr.Nin(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Nin(handleArrayConds(y))))
-      case _                => report.errorAndAbort("Wrong operator inside $not")
+      case QExpr.Gte(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gte(opt(y))))
+      case QExpr.Lte(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lte(opt(y))))
+      case QExpr.Gt(x, y)    => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Gt(opt(y))))
+      case QExpr.Lt(x, y)    => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Lt(opt(y))))
+      case QExpr.Eq(x, y)    => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Eq(opt(y))))
+      case QExpr.Ne(x, y)    => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Ne(opt(y))))
+      case QExpr.Size(x, y)  => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Size(opt(y))))
+      case QExpr.Regex(x, p) => MQ.OnField(getField(x)(renames), MQ.Regex(p))
+      case QExpr.In(x, y)    => MQ.OnField(getField(x)(renames), MQ.Not(MQ.In(handleArrayConds(y))))
+      case QExpr.Nin(x, y)   => MQ.OnField(getField(x)(renames), MQ.Not(MQ.Nin(handleArrayConds(y))))
+      case _                 => report.errorAndAbort("Wrong operator inside $not")
 
   def handleArrayConds(x: List[QExpr] | QExpr)(using quotes: Quotes): List[MQ] | MQ =
     x match
@@ -105,8 +109,15 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Ne(x)            => "{ \"$ne\": " + rec(x) + " }"
         case MQ.Not(x)           => "{ \"$not\": " + rec(x) + " }"
         case MQ.Size(x)          => "{ \"$size\": " + rec(x) + " }"
-        case MQ.In(exprs)        => "{ \"$in\": [" + renderArrays(exprs) + "] }"
-        case MQ.Nin(exprs)       => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
+        case MQ.Regex(pattern) =>
+          pattern.value match
+            case Some(p: Pattern) =>
+              val (pattern, options) = parsePattern(p)
+              "{ \"$regex\": \"" + pattern + "\"" + options.map(", \"$options\": \"" + _ + "\"").getOrElse("") + " }"
+            case _ => "{ \"$regex\": \"?\" \"$options\": \"?\" }"
+
+        case MQ.In(exprs)  => "{ \"$in\": [" + renderArrays(exprs) + "] }"
+        case MQ.Nin(exprs) => "{ \"$nin\": [" + renderArrays(exprs) + "] }"
         case MQ.And(exprs) =>
           val fields = exprs.collect { case q: MQ.OnField => q.field.path.mkString(".") }
           if (fields.distinct.size < fields.size)
@@ -160,6 +171,22 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{ BsonDocument("$ne" -> ${ handleValues(x) }) }
       case MQ.Size(x) =>
         '{ BsonDocument("$size" -> ${ handleValues(x) }) }
+      case MQ.Regex(p) =>
+        p.value match
+          case Some(pattern) =>
+            val (regex, options) = parsePattern(pattern)
+            '{
+              BsonDocument(
+                (Map("$regex"     -> BsonString(${ Expr(regex) })) ++ ${ Expr(options) }
+                  .map("$options" -> BsonString(_))).toList
+              )
+            }
+          case _ =>
+            '{
+              val (regex, options) = parsePattern(${ p })
+              BsonDocument((Map("$regex" -> BsonString(regex)) ++ options.map("$options" -> BsonString(_))).toList)
+            }
+
       case MQ.In(exprs) =>
         '{
           BsonDocument("$in" -> ${ handleArrayCond(exprs) })
@@ -238,5 +265,19 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     expr match
       case MQ.Field(path) => Expr(path)
       case _              => report.errorAndAbort("field should be string")
+
+  def parsePattern(pattern: Pattern): (String, Option[String]) =
+    val flags = List(
+      if (pattern.flags & Pattern.CASE_INSENSITIVE) != 0 then Some("i") else None,
+      if (pattern.flags & Pattern.MULTILINE) != 0 then Some("m") else None,
+      if (pattern.flags & Pattern.COMMENTS) != 0 then Some("x") else None,
+      if (pattern.flags & Pattern.DOTALL) != 0 then Some("s") else None,
+    ).flatten
+
+    val options = if (flags.isEmpty) None else Some(flags.reduce(_ + _))
+    val matcher = Pattern.compile("(\\(\\?([a-z]*)\\))?(.*)").matcher(pattern.pattern)
+    matcher.matches()
+    matcher.group(3) -> options
+  end parsePattern
 
 }

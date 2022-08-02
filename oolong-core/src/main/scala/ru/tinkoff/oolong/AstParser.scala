@@ -1,5 +1,6 @@
 package ru.tinkoff.oolong
 
+import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.language.postfixOps
 import scala.quoted.*
@@ -85,6 +86,15 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
       case AsTerm(Select(Apply(TypeApply(Select(lhs @ Select(_, _), "contains"), _), List(rhs)), "unary_!")) =>
         QExpr.Ne(parse(lhs.asExpr), parse(rhs.asExpr))
+
+      case '{ Pattern.matches($s, $x) } =>
+        QExpr.Regex(parse(x), '{ Pattern.compile($s) })
+
+      case '{ (${ s }: Pattern).matcher($x).matches() } =>
+        QExpr.Regex(parse(x), s)
+
+      case '{ ($x: String).matches($s) } =>
+        QExpr.Regex(parse(x), '{ Pattern.compile($s) })
 
       case '{ type t; ($s: Seq[`t`]).contains($x: `t`) } =>
         QExpr.In(parse(x), parseIterable(s))

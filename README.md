@@ -52,6 +52,82 @@ val q: BsonDocument = update[Person](_
 
 ## DSL of oolong
 
+### QueryMeta
+
+In order to rename fields in codecs and queries for type T the instance of QueryMeta[T] should be provided in the scope:
+
+```scala
+
+import org.mongodb.scala.BsonDocument
+
+import ru.tinkoff.oolong.bson.BsonDecoder
+import ru.tinkoff.oolong.bson.BsonEncoder
+import ru.tinkoff.oolong.bson.given
+import ru.tinkoff.oolong.bson.meta.*
+import ru.tinkoff.oolong.bson.meta.QueryMeta
+import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.*
+
+case class Person(name: String, address: Option[Address]) derives BsonEncoder, BsonDecoder
+
+object Person:
+  inline given QueryMeta[Person] = queryMeta(_.name -> "lastName")
+end Person
+
+case class Address(city: String) derives BsonEncoder, BsonDecoder
+
+val person = Person("Adams", Some(Address("New York")))
+val bson: BsonDocument = person.bson.asDocument()
+val json = bson.toJson
+// json is {"lastName": "Adams", "address": {"city": "New York"}}
+
+//also having QueryMeta[Person] affects filter and update queries:
+val q0: BsonDocument = query[Person](_.name == "Johnson")
+
+// The generated query will be:
+// {"lastName": "Johnson"}
+
+val q1: BsonDocument = update[Person](_
+  .set(_.name, "Brook")
+)
+// q1 is {
+// 	$set: { "lastName": "Brook" },
+// }
+```
+
+All QueryMeta instances should be inline given instances to be used in macro. 
+If they are not given their presence will not have any effect on codecs and queries.
+And if they are not inline the error will be thrown during compilation:
+```Please, add `inline` to given QueryMeta[T]```
+
+In addition to manual creation of QueryMeta instances, there are several existing instances of QueryMeta:
+QueryMeta.snakeCase
+QueryMeta.camelCase
+QueryMeta.upperCamelCase
+
+Also they can be combined with manual fields renaming:
+```scala
+
+import ru.tinkoff.oolong.bson.BsonDecoder
+import ru.tinkoff.oolong.bson.BsonEncoder
+import ru.tinkoff.oolong.bson.given
+import ru.tinkoff.oolong.bson.meta.*
+import ru.tinkoff.oolong.bson.meta.QueryMeta
+
+case class Student(firstName: String, lastName: String, previousUniversity: String) derives BsonEncoder, BsonDecoder
+
+object Student:
+  inline given QueryMeta[Student] = QueryMeta.snakeCase.withRenaming(_.firstName -> "name")
+end Student
+
+val s = Student("Alexander", "Bloom", "MSU")
+val bson = s.bson
+// bson printed form is: {"name": "Alexander", "last_name": "Bloom", "previous_university": "MSU"}
+```
+
+If fields of a class `T` are not renamed, you don't need to provide any instance, even if some other class `U` has  a field of type `T`. 
+Macro automatically searches for instances of QueryMeta for all fields, types of which are case classes, and if not found, assumes that fields are not renamed, and then continues doing it recursively 
+
 ### Working with Option[_]
 
 When we need to unwrap an `A` from `Option[A]`, we don't use `map` / `flatMap` / etc.
@@ -64,7 +140,7 @@ case class Address(city: String)
 val q = query[Person](_.address.!!.city == "Amsterdam")
 ```
 
-Similar to Quill, Oolong provides a quoted DSL, which means that the code you write inside `query(...)` and `compileUpdate` blocks never gets to execute.
+Similar to Quill, Oolong provides a quoted DSL, which means that the code you write inside `query(...)` and `update` blocks never gets to execute.
 Since we don't have to worry about runtime exceptions, we can tell the compiler to relax and give us the type that we want.
 
 ### Raw subquries

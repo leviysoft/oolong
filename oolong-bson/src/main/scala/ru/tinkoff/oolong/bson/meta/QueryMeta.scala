@@ -19,8 +19,10 @@ object QueryMeta:
     def unapply(expr: Expr[QueryMeta[T]])(using q: Quotes): Option[QueryMeta[T]] =
       import q.reflect.*
       expr match
-        case '{ QueryMeta(${ map }: Map[String, String]) } => Some(QueryMeta[T](map.valueOrAbort))
-        case _                                             => None
+        case '{ QueryMeta(${ map }: Map[String, String]) } =>
+          map.value.map(QueryMeta[T].apply)
+        case _ =>
+          None
 
   // Adapted from enumeratum: https://github.com/lloydmeta/enumeratum
 

@@ -52,6 +52,209 @@ val q: BsonDocument = update[Person](_
 
 ## DSL of oolong
 
+### Supported MongoDB operators 
+
+#### Query operators
+
+I Comparison query operators
+1. $eq
+
+```scala
+import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.*
+
+case class Person(name: String, age: Int, email: Option[String])
+
+val q = query[Person](_.name == "John")
+// q is {"name": "John"}
+```
+In oolong $eq query is transformed into its implicit form: `{ field: <value> }`, except when a field is queried more than once.
+
+2. $gt
+
+```scala
+val q = query[Person](_.age > 18)
+// q is {"age": {"$gt": 18}}
+```
+
+3. $gte
+
+```scala
+val q = query[Person](_.age >= 18)
+// q is {"age": {"$gte": 18}}
+```
+
+4. $in
+
+```scala
+val q = query[Person](p => List(18, 19, 20).contains(p.age))
+// q is {"age": {"$in": [18, 19, 20]}}
+```
+
+5. $lt
+
+```scala
+val q = query[Person](_.age < 18)
+// q is {"age": {"$lt": 18}}
+```
+
+6. $lte
+
+```scala
+val q = query[Person](_.age <= 18)
+// q is {"age": {"$lte": 18}}
+```
+
+7. $ne
+
+```scala
+val q = query[Person](_.name != "John")
+// q is {"name" : {"$ne": "John"}}
+```
+
+8. $nin
+
+```scala
+val q = query[Person](p => !List(18, 19, 20).contains(p.age))
+// q is {"age": {"$nin": [18, 19, 20]}}
+```
+
+II Logical query operators
+
+1. $and
+
+```scala
+val q = query[Person](p => p.name == "John" && p.age >= 18)
+// q is {"name" : "John", "age": {"$gte": 18}}
+```
+If we query different fields the query is simplified as above. 
+
+```scala
+//However, should we query the same field twice, we would observe the form with $and
+val q = query[Person](p => p.age != 33 && p.age >= 18)
+// q is {"$and": [{"age": {"$ne": 33}}, {"age": {"$gte": 18}]}
+```
+2. $or
+
+```scala
+val q = query[Person](p => p.age != 33 || p.age >= 18)
+// q is {"or": [{"age": {"$ne": 33}}, {"age": {"$gte": 18}]}
+```
+
+3. $not
+
+```scala
+val q = query[Person](p => !(p.age < 18))
+// q is { "age": { "$not": { "$lt": 18 } } }
+```
+
+III Element Query Operators
+
+1. $exists
+```scala
+val q = query[Person](_.email.isDefined)
+// q is { "email": { "$exists": true } }
+val q1 = query[Person](_.email.nonEmpty)
+// q1 is { "email": { "$exists": true } }
+val q2 = query[Person](_.email.isEmpty)
+// q2 is { "email": { "$exists": false } }
+```
+
+IV Evaluation Query Operators
+
+1. $regex
+
+There are 4 ways to make a $regex query, that are supported in oolong, which are:
+```scala
+import java.util.regex.Pattern
+
+val q = query[Person](_.email.!!.matches("(?ix)^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"))
+//q is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"} 
+val q1 = query[Person](p => Pattern.compile("(?ix)^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$").matcher(p.email.!!).matches())
+//q1 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"}
+val q2 = query[Person](p => Pattern.compile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", Pattern.CASE_INSENSITIVE | Pattern.COMMENTS).matcher(p.email.!!).matches()
+//q2 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"}
+val q3 = query[Person](p => Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", p.email.!!))
+//q3 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"}
+```
+
+V Array Query Operators
+
+```scala
+import ru.tinkoff.oolong.dsl.*
+
+case class Course(studentNames: List[String])
+
+val q = query[Course](_.studentNames.size == 20)
+val q = query[Course](_.studentNames.length == 20)
+// q is {"studentNames": {"$size": 20}}
+```
+
+#### Update operators
+
+I Field Update Operators
+
+1. $inc
+```scala
+import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.*
+
+case class Observation(count: Int, result: Long, name: String, threshold: Option[Int])
+
+val q = update[Observation](_.inc(_.count, 1))
+// q is {"$set": {"count": 1}}
+```
+
+2. $min
+```scala
+val q = update[Observation](_.min(_.result, 1))
+// q is {"$min": {"result": 1}}
+```
+
+3. $max
+```scala
+val q = update[Observation](_.max(_.result, 10))
+// q is {"$min": {"result": 1}}
+```
+
+4. $mul
+```scala
+val q = update[Observation](_.mul(_.result, 2))
+// q is {"$mul": {"result": 2}}
+```
+
+5. $rename
+```scala
+val q = update[Observation](_.rename(_.name, "tag"))
+// q is {"$rename": {"name": "tag"}}
+```
+
+6. $set
+```scala
+val q = update[Observation](_.set(_.count, 0))
+// q is {"$set": {"count": 0}}
+```
+
+7. $set
+```scala
+val q = update[Observation](_.set(_.count, 0))
+// q is {"$set": {"count": 0}}
+```
+
+7. $set
+```scala
+val q = update[Observation](_.setOnInsert(_.threshold, 100))
+// q is {"$setOnInsert": {"threshold": 100}}
+```
+
+8. $unset
+
+$unset can be used only to set None on Option fields
+```scala
+val q = update[Observation](_.unset(_.threshold))
+// q is {"$unset": {"threshold": ""}}
+```
+
 ### QueryMeta
 
 In order to rename fields in codecs and queries for type T the instance of QueryMeta[T] should be provided in the scope:
@@ -168,6 +371,5 @@ val q = query[Person](p => p.name == "Joe" && cityFilter(p))
 ## Coming soon
 
 - elasticsearch support
-- field renaming 
 - aggregation pipelines for Mongo
 

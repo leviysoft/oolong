@@ -145,10 +145,8 @@ private[oolong] object Utils:
               parseFlagsRec(term)(flags :+ mapNameToFlag(flag))
             case Select(term, "|")              => parseFlagsRec(term)(flags)
             case Select(Ident("Pattern"), flag) => flags :+ mapNameToFlag(flag)
-        end parseFlagsRec
 
         parseFlagsRec(term)(List.empty)
-      end parseFlags
 
       def rec(term: Term): Option[Pattern] = term match
         case Typed(term, _) => rec(term)
@@ -181,5 +179,3 @@ private[oolong] object Utils:
       def unapply(expr: Expr[Pattern])(using q: Quotes): Option[Pattern] =
         import q.reflect.*
         AsRegexPattern.unapply(expr)
-  end PatternInstance
-end Utils

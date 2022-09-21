@@ -180,6 +180,6 @@ private[oolong] object Utils:
         import q.reflect.*
         AsRegexPattern.unapply(expr)
 
-  extension[A] (sq: Seq[A]) {
+  extension [A](sq: Seq[A]) {
     def pforall(pf: PartialFunction[A, Boolean]): Boolean = sq.forall(pf.applyOrElse(_, _ => false))
   }

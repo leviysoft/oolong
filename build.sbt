@@ -1,6 +1,46 @@
 //To use Scalafix on Scala 3 projects, you must unset `scalafixBinaryScalaVersion`
 //ThisBuild / scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value)
 
+inThisBuild(
+  List(
+    organization := "ru.tinkoff",
+    homepage := Some(url("https://github.com/Tinkoff/oolong")),
+    licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    developers := List(
+      Developer(
+        "edubrovski",
+        "Eduard Dubrovsky",
+        "dubrovskieddie@gmail.com",
+        url("https://github.com/edubrovski")
+      ),
+      Developer(
+        "danslapman",
+        "Daniil Smirnov",
+        "danslapman@gmail.com",
+        url("https://github.com/danslapman")
+      ),
+      Developer(
+        "desavitsky",
+        "Denis Savitsky",
+        "-",
+        url("https://github.com/desavitsky")
+      ),
+      Developer(
+        "Assassin4791",
+        "Assassin4791",
+        "-",
+        url("https://github.com/Assassin4791")
+      ),
+      Developer(
+        "InversionSpaces",
+        "InversionSpaces",
+        "InversionSpaces@vivaldi.net",
+        url("https://github.com/InversionSpaces")
+      )
+    )
+  )
+)
+
 val `oolong-bson` = (project in file("oolong-bson"))
   .settings(Settings.common)
   .settings(

@@ -9,9 +9,6 @@ object Settings {
     organization := "ru.tinkoff",
     version := "0.1",
     scalaVersion := "3.1.3",
-    Compile / packageDoc / publishArtifact := false,
-    Compile / packageSrc / publishArtifact := false,
-    Compile / doc / sources := Seq.empty,
     scalacOptions ++= Seq(
       // For reference: https://docs.scala-lang.org/scala3/guides/migration/options-lookup.html
       "-encoding",

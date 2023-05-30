@@ -76,7 +76,7 @@ extension (bv: BsonValue)
    *
    * In a case of key collision bson1 values takes priority
    */
-  @inline def :+(other: BsonValue): BsonValue = merge(other, bv)
+  @inline def :+(other: BsonValue): BsonValue = merge(other, bv, false)
 
   /**
    * Merges two bson values
@@ -85,7 +85,7 @@ extension (bv: BsonValue)
    *
    * In a case of key collision bson2 values takes priority
    */
-  @inline def +:(other: BsonValue): BsonValue = merge(other, bv)
+  @inline def +:(other: BsonValue): BsonValue = merge(other, bv, false)
 
 extension (ba: BsonArray)
   def modify(f: PartialEndo[BsonValue]): BsonArray = BsonArray.fromIterable(
@@ -117,7 +117,7 @@ extension (bd: BsonDocument)
     if (bd.containsKey(el._1))
       bd.clone().tap { doc =>
         val existing = doc.get(el._1)
-        doc.put(el._1, merge(existing, el._2))
+        doc.put(el._1, merge(existing, el._2, false))
       }
     else
       bd.clone().append(el._1, el._2)

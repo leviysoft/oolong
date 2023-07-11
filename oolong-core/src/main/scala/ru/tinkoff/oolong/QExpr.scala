@@ -2,6 +2,7 @@ package ru.tinkoff.oolong
 
 import java.util.regex.Pattern
 import scala.quoted.Expr
+import scala.quoted.Type
 
 import ru.tinkoff.oolong.QExpr
 
@@ -24,6 +25,7 @@ private[oolong] object QExpr {
   case class Not(x: QExpr) extends QExpr
 
   case class In(x: QExpr, y: List[QExpr] | QExpr) extends QExpr
+
   case class Nin(x: QExpr, y: List[QExpr] | QExpr) extends QExpr
 
   case class And(children: List[QExpr]) extends QExpr
@@ -45,4 +47,6 @@ private[oolong] object QExpr {
   case class Size(x: QExpr, y: QExpr) extends QExpr
 
   case class Regex(x: QExpr, pattern: Expr[Pattern]) extends QExpr
+
+  case class TypeCheck[T](x: QExpr, typeInfo: TypeInfo[T]) extends QExpr
 }

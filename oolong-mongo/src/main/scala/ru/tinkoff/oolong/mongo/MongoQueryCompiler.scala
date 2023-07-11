@@ -6,6 +6,7 @@ import scala.quoted.Expr
 import scala.quoted.Quotes
 import scala.quoted.Type
 
+import org.bson.BsonType
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
 import org.mongodb.scala.bson.BsonDocument
@@ -16,6 +17,7 @@ import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.bson.BsonValue
 
 import ru.tinkoff.oolong.*
+import ru.tinkoff.oolong.TypeInfo
 import ru.tinkoff.oolong.Utils.PatternInstance.given
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.meta.QueryMeta
@@ -57,6 +59,35 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case QExpr.Regex(x, pattern)       => MQ.OnField(getField(x)(renames), MQ.Regex(pattern))
         case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
         case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
+        case QExpr.TypeCheck(x, y) =>
+          import y.quotedType
+          val tpe                = TypeRepr.of[y.Type]
+          def checkType[T: Type] = tpe =:= TypeRepr.of[T]
+          val bsonType = tpe match {
+            case _ if checkType[MongoType.DOUBLE]                => BsonType.DOUBLE
+            case _ if checkType[MongoType.STRING]                => BsonType.STRING
+            case _ if checkType[MongoType.DOCUMENT]              => BsonType.DOCUMENT
+            case _ if checkType[MongoType.ARRAY]                 => BsonType.ARRAY
+            case _ if checkType[MongoType.BINARY]                => BsonType.BINARY
+            case _ if checkType[MongoType.UNDEFINED]             => BsonType.UNDEFINED
+            case _ if checkType[MongoType.OBJECT_ID]             => BsonType.OBJECT_ID
+            case _ if checkType[MongoType.BOOLEAN]               => BsonType.BOOLEAN
+            case _ if checkType[MongoType.DATE_TIME]             => BsonType.DATE_TIME
+            case _ if checkType[MongoType.NULL]                  => BsonType.NULL
+            case _ if checkType[MongoType.REGULAR_EXPRESSION]    => BsonType.REGULAR_EXPRESSION
+            case _ if checkType[MongoType.DB_POINTER]            => BsonType.DB_POINTER
+            case _ if checkType[MongoType.JAVASCRIPT]            => BsonType.JAVASCRIPT
+            case _ if checkType[MongoType.SYMBOL]                => BsonType.SYMBOL
+            case _ if checkType[MongoType.JAVASCRIPT_WITH_SCOPE] => BsonType.JAVASCRIPT_WITH_SCOPE
+            case _ if checkType[MongoType.INT32]                 => BsonType.INT32
+            case _ if checkType[MongoType.TIMESTAMP]             => BsonType.TIMESTAMP
+            case _ if checkType[MongoType.INT64]                 => BsonType.INT64
+            case _ if checkType[MongoType.DECIMAL128]            => BsonType.DECIMAL128
+            case _ if checkType[MongoType.MIN_KEY]               => BsonType.MIN_KEY
+            case _ if checkType[MongoType.MAX_KEY]               => BsonType.MAX_KEY
+            case _ => report.errorAndAbort(s"Unsupported bson type for ${tpe.show}")
+          }
+          MQ.OnField(getField(x)(renames), MQ.TypeCheck(MQ.Constant(bsonType.getValue)))
         case QExpr.Subquery(code) =>
           code match {
             case '{ $doc: BsonDocument } => MQ.Subquery(doc)
@@ -130,6 +161,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.ScalaCode(code)      => renderCode(code)
         case MQ.ScalaCodeIterable(_) => "?"
         case MQ.Subquery(_)          => "{...}"
+        case MQ.TypeCheck(bsonType)  => "{ \"$type\": " + rec(bsonType) + " }"
         case MQ.Field(field) =>
           report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
     end rec
@@ -199,6 +231,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{ BsonDocument("$not" -> ${ parseOperators(x) }) }
       case MQ.Exists(x) =>
         '{ BsonDocument("$exists" -> ${ handleValues(x) }) }
+      case MQ.TypeCheck(bsonType) =>
+        '{ BsonDocument("$type" -> ${ handleValues(bsonType) }) }
       case _ => report.errorAndAbort(s"Wrong operator: ${optRepr}")
   end parseOperators
 

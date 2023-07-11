@@ -19,6 +19,7 @@ import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.MongoType
 
 class QueryWithMetaSpec extends AnyFunSuite {
 
@@ -455,6 +456,26 @@ class QueryWithMetaSpec extends AnyFunSuite {
     assert(
       q == BsonDocument(
         "string_field" -> BsonDocument("$regex" -> BsonString("SomeString"))
+      )
+    )
+  }
+
+  test("test $type for int") {
+    val q = query[TestClass](_.intField.isInstanceOf[MongoType.INT32])
+
+    assert(
+      q == BsonDocument(
+        "int_field" -> BsonDocument("$type" -> BsonInt32(16))
+      )
+    )
+  }
+
+  test("test $type for document") {
+    val q = query[TestClass](_.innerClassField.isInstanceOf[MongoType.DOCUMENT])
+
+    assert(
+      q == BsonDocument(
+        "inner_class_field" -> BsonDocument("$type" -> BsonInt32(3))
       )
     )
   }

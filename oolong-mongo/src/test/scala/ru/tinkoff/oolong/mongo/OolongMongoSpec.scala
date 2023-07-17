@@ -36,8 +36,10 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
 
   override def beforeAll(): Unit = {
     val documents = List(
+      TestClass("0", 0, InnerClass("sdf"), Nil),
       TestClass("1", 1, InnerClass("qwe"), Nil),
-      TestClass("2", 2, InnerClass("asd"), Nil)
+      TestClass("2", 2, InnerClass("asd"), Nil),
+      TestClass("3", 12, InnerClass("sdf"), Nil)
     )
 
     implicit val ec = ExecutionContext.global
@@ -61,10 +63,10 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
   }
 
   it should "find documents in a collection with query with runtime constant" in {
-    val q = query[TestClass](_.field2 <= lift(Random.between(3, 100)))
+    val q = query[TestClass](_.field2 <= lift(Random.between(13, 100)))
     for {
       res <- collection.find(q).toFuture()
-    } yield assert(res.size == 2)
+    } yield assert(res.size == 4)
   }
 
   it should "find both documents with OR operator" in {
@@ -95,7 +97,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
 
     for {
       res <- collection.find(q).toFuture()
-    } yield assert(res.size == 2)
+    } yield assert(res.size == 4)
   }
 
   it should "compile queries with `unchecked`" in {
@@ -151,11 +153,27 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
 
     for {
       res <- collection.find(q).toFuture()
-    } yield assert(res.size == 2)
+    } yield assert(res.size == 4)
   }
 
   it should "compile queries with `.isInstance` #2" in {
     val q = query[TestClass](_.field3.isInstanceOf[MongoType.DOCUMENT])
+
+    for {
+      res <- collection.find(q).toFuture()
+    } yield assert(res.size == 4)
+  }
+
+  it should "compile queries with `.mod` #1" in {
+    val q = query[TestClass](_.field2.mod(4, 0))
+
+    for {
+      res <- collection.find(q).toFuture()
+    } yield assert(res.size == 2)
+  }
+
+  it should "compile queries with `.mod` #2" in {
+    val q = query[TestClass](_.field2.mod(4.99, 0))
 
     for {
       res <- collection.find(q).toFuture()

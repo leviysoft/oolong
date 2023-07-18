@@ -159,6 +159,14 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case InlinedSubquery(term) =>
         parse(term.asExpr)
 
+      case '{ type t; ($x: Any).isInstanceOf[`t`] } =>
+        import quotes.reflect.*
+        QExpr.TypeCheck(
+          parse(x),
+          new TypeInfo[t] {
+            override val quotedType: quoted.Type[t] = Type.of[t]
+          }
+        )
       case _ =>
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }

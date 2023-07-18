@@ -24,6 +24,7 @@ import org.scalatest.flatspec.AsyncFlatSpec
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.MongoType
 
 class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with BeforeAndAfterAll {
 
@@ -143,6 +144,22 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
     for {
       res <- collection.find(q).toFuture()
     } yield assert(res.size == 1)
+  }
+
+  it should "compile queries with `.isInstance` #1" in {
+    val q = query[TestClass](_.field2.isInstanceOf[MongoType.INT32])
+
+    for {
+      res <- collection.find(q).toFuture()
+    } yield assert(res.size == 2)
+  }
+
+  it should "compile queries with `.isInstance` #2" in {
+    val q = query[TestClass](_.field3.isInstanceOf[MongoType.DOCUMENT])
+
+    for {
+      res <- collection.find(q).toFuture()
+    } yield assert(res.size == 2)
   }
 
   // TODO: test updates

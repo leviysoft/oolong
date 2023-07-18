@@ -19,6 +19,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.dsl.*
+import ru.tinkoff.oolong.mongo.MongoType
 
 class QuerySpec extends AnyFunSuite {
 
@@ -604,4 +605,23 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("test $type for int") {
+    val q = query[TestClass](_.intField.isInstanceOf[MongoType.INT32])
+
+    assert(
+      q == BsonDocument(
+        "intField" -> BsonDocument("$type" -> BsonInt32(16))
+      )
+    )
+  }
+
+  test("test $type for document") {
+    val q = query[TestClass](_.innerClassField.isInstanceOf[MongoType.DOCUMENT])
+
+    assert(
+      q == BsonDocument(
+        "innerClassField" -> BsonDocument("$type" -> BsonInt32(3))
+      )
+    )
+  }
 }

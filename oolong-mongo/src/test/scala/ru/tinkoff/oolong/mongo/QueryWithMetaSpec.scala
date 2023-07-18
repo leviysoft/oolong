@@ -29,6 +29,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
 
   case class TestClass(
       intField: Int,
+      doubleField: Double,
       stringField: String,
       dateField: LocalDate,
       innerClassField: InnerClass,
@@ -476,6 +477,40 @@ class QueryWithMetaSpec extends AnyFunSuite {
     assert(
       q == BsonDocument(
         "inner_class_field" -> BsonDocument("$type" -> BsonInt32(3))
+      )
+    )
+  }
+
+  test("test $mod for int with lift(...)") {
+    val q = query[TestClass](_.intField.mod(lift(4), 5.2))
+
+    assert(
+      q == BsonDocument(
+        "int_field" -> BsonDocument(
+          "$mod" -> BsonArray.fromIterable(
+            List(
+              BsonInt32(4),
+              BsonDouble(5.2)
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("test $mod for double with lift(...)") {
+    val q = query[TestClass](_.doubleField.mod(5.2, lift(123L)))
+
+    assert(
+      q == BsonDocument(
+        "double_field" -> BsonDocument(
+          "$mod" -> BsonArray.fromIterable(
+            List(
+              BsonDouble(5.2),
+              BsonInt64(123)
+            )
+          )
+        )
       )
     )
   }

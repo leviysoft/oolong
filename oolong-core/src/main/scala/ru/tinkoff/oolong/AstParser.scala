@@ -167,6 +167,12 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
             override val quotedType: quoted.Type[t] = Type.of[t]
           }
         )
+
+      case AsTerm(
+            Apply(Apply(TypeApply(Apply(TypeApply(Ident("mod"), _), List(prop)), _), List(divisor, remainder)), _)
+          ) =>
+        QExpr.Mod(parse(prop.asExpr), parse(divisor.asExpr), parse(remainder.asExpr))
+
       case _ =>
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }

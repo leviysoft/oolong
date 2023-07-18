@@ -119,11 +119,18 @@ val q = query[Person](p => !List(18, 19, 20).contains(p.age))
 // q is {"age": {"$nin": [18, 19, 20]}}
 ```
 
-8. $type
+9. $type
 
 ```scala
 val q = query[Person](_.age.isInstance[MongoType.INT32])
 // q is {"age": { "$type": 16 }}
+```
+
+10. $mod
+
+```scala
+val q = query[Person](_.age.mod(4.5, 2))
+// q is {"age": {"$mod": [4.5, 2]}}
 ```
 
 II Logical query operators

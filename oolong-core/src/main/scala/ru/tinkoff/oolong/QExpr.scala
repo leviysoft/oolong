@@ -49,4 +49,6 @@ private[oolong] object QExpr {
   case class Regex(x: QExpr, pattern: Expr[Pattern]) extends QExpr
 
   case class TypeCheck[T](x: QExpr, typeInfo: TypeInfo[T]) extends QExpr
+
+  case class Mod(x: QExpr, divisor: QExpr, remainder: QExpr) extends QExpr
 }

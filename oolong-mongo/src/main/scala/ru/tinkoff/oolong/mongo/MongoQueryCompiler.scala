@@ -88,6 +88,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
             case _ => report.errorAndAbort(s"Unsupported bson type for ${tpe.show}")
           }
           MQ.OnField(getField(x)(renames), MQ.TypeCheck(MQ.Constant(bsonType.getValue)))
+        case QExpr.Mod(x, d, r) =>
+          MQ.OnField(getField(x)(renames), MQ.Mod(rec(d), rec(r)))
         case QExpr.Subquery(code) =>
           code match {
             case '{ $doc: BsonDocument } => MQ.Subquery(doc)
@@ -154,14 +156,15 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
           if (fields.distinct.size < fields.size)
             "\"$and\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
           else exprs.map(rec).mkString(", ")
-        case MQ.Or(exprs)            => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
-        case MQ.Exists(x)            => " { \"$exists\": " + rec(x) + " }"
-        case MQ.Constant(s: String)  => "\"" + s + "\""
-        case MQ.Constant(s: Any)     => s.toString // also limit
-        case MQ.ScalaCode(code)      => renderCode(code)
-        case MQ.ScalaCodeIterable(_) => "?"
-        case MQ.Subquery(_)          => "{...}"
-        case MQ.TypeCheck(bsonType)  => "{ \"$type\": " + rec(bsonType) + " }"
+        case MQ.Or(exprs)               => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
+        case MQ.Exists(x)               => " { \"$exists\": " + rec(x) + " }"
+        case MQ.Constant(s: String)     => "\"" + s + "\""
+        case MQ.Constant(s: Any)        => s.toString // also limit
+        case MQ.ScalaCode(code)         => renderCode(code)
+        case MQ.ScalaCodeIterable(_)    => "?"
+        case MQ.Subquery(_)             => "{...}"
+        case MQ.TypeCheck(bsonType)     => "{ \"$type\": " + rec(bsonType) + " }"
+        case MQ.Mod(divisor, remainder) => "{ \"$mod\": [" + rec(divisor) + "," + rec(remainder) + "] }"
         case MQ.Field(field) =>
           report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
     end rec
@@ -218,7 +221,6 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
               val (regex, options) = parsePattern(${ p })
               BsonDocument((Map("$regex" -> BsonString(regex)) ++ options.map("$options" -> BsonString(_))).toList)
             }
-
       case MQ.In(exprs) =>
         '{
           BsonDocument("$in" -> ${ handleArrayCond(exprs) })
@@ -233,6 +235,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{ BsonDocument("$exists" -> ${ handleValues(x) }) }
       case MQ.TypeCheck(bsonType) =>
         '{ BsonDocument("$type" -> ${ handleValues(bsonType) }) }
+      case MQ.Mod(divisor, remainder) =>
+        '{
+          BsonDocument("$mod" -> BsonArray.fromIterable(List(${ handleValues(divisor) }, ${ handleValues(remainder) })))
+        }
       case _ => report.errorAndAbort(s"Wrong operator: ${optRepr}")
   end parseOperators
 

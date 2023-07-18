@@ -15,7 +15,7 @@ extension [T](inline q: QueryMeta[T])
 end extension
 
 object QueryMeta:
-  given [T]: FromExpr[QueryMeta[T]] = new FromExpr[QueryMeta[T]]:
+  given [T: Type]: FromExpr[QueryMeta[T]] = new FromExpr[QueryMeta[T]]:
     def unapply(expr: Expr[QueryMeta[T]])(using q: Quotes): Option[QueryMeta[T]] =
       import q.reflect.*
       expr match

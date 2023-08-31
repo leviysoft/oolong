@@ -23,8 +23,8 @@ Write your queries as plain Scala lambdas and oolong will translate them into th
 ```scala
 import org.mongodb.scala.bson.BsonDocument
 
-import ru.tinkoff.oolong.dsl.*
-import ru.tinkoff.oolong.mongo.*
+import oolong.dsl.*
+import oolong.mongo.*
 
 case class Person(name: String, address: Address)
 
@@ -60,8 +60,8 @@ I Comparison query operators
 1. $eq
 
 ```scala
-import ru.tinkoff.oolong.dsl.*
-import ru.tinkoff.oolong.mongo.*
+import oolong.dsl.*
+import oolong.mongo.*
 
 case class Person(name: String, age: Int, email: Option[String])
 
@@ -195,7 +195,7 @@ val q3 = query[Person](p => Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4
 V Array Query Operators
 
 ```scala
-import ru.tinkoff.oolong.dsl.*
+import oolong.dsl.*
 
 case class Course(studentNames: List[String])
 
@@ -210,8 +210,8 @@ I Field Update Operators
 
 1. $inc
 ```scala
-import ru.tinkoff.oolong.dsl.*
-import ru.tinkoff.oolong.mongo.*
+import oolong.dsl.*
+import oolong.mongo.*
 
 case class Observation(count: Int, result: Long, name: String, threshold: Option[Int])
 
@@ -277,13 +277,13 @@ In order to rename fields in codecs and queries for type T the instance of Query
 
 import org.mongodb.scala.BsonDocument
 
-import ru.tinkoff.oolong.bson.BsonDecoder
-import ru.tinkoff.oolong.bson.BsonEncoder
-import ru.tinkoff.oolong.bson.given
-import ru.tinkoff.oolong.bson.meta.*
-import ru.tinkoff.oolong.bson.meta.QueryMeta
-import ru.tinkoff.oolong.dsl.*
-import ru.tinkoff.oolong.mongo.*
+import oolong.bson.BsonDecoder
+import oolong.bson.BsonEncoder
+import oolong.bson.given
+import oolong.bson.meta.*
+import oolong.bson.meta.QueryMeta
+import oolong.dsl.*
+import oolong.mongo.*
 
 case class Person(name: String, address: Option[Address]) derives BsonEncoder, BsonDecoder
 
@@ -325,11 +325,11 @@ QueryMeta.upperCamelCase
 Also they can be combined with manual fields renaming:
 ```scala
 
-import ru.tinkoff.oolong.bson.BsonDecoder
-import ru.tinkoff.oolong.bson.BsonEncoder
-import ru.tinkoff.oolong.bson.given
-import ru.tinkoff.oolong.bson.meta.*
-import ru.tinkoff.oolong.bson.meta.QueryMeta
+import oolong.bson.BsonDecoder
+import oolong.bson.BsonEncoder
+import oolong.bson.given
+import oolong.bson.meta.*
+import oolong.bson.meta.QueryMeta
 
 case class Student(firstName: String, lastName: String, previousUniversity: String) derives BsonEncoder, BsonDecoder
 

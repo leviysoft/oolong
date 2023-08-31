@@ -6,7 +6,7 @@ import sbt._
 
 object Settings {
   val common = Seq(
-    organization := "ru.tinkoff",
+    organization := "io.github.leviysoft",
     version := "0.1",
     scalaVersion := "3.3.0",
     scalacOptions ++= Seq(

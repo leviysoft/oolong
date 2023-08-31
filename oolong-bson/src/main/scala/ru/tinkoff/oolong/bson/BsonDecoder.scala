@@ -7,7 +7,6 @@ import magnolia1.*
 import org.bson.BsonInvalidOperationException
 import org.bson.BsonNull
 import org.mongodb.scala.bson.*
-
 import ru.tinkoff.oolong.bson.annotation.*
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 

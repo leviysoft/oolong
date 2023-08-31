@@ -14,7 +14,6 @@ import org.mongodb.scala.bson.BsonInt32
 import org.mongodb.scala.bson.BsonInt64
 import org.mongodb.scala.bson.BsonString
 import org.scalatest.funsuite.AnyFunSuite
-
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.bson.meta.QueryMeta

@@ -3,7 +3,6 @@ package ru.tinkoff.oolong.mongo
 import scala.quoted.*
 
 import org.mongodb.scala.bson.BsonDocument
-
 import ru.tinkoff.oolong.*
 import ru.tinkoff.oolong.dsl.*
 

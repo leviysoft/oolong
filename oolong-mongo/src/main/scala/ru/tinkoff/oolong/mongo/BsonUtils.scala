@@ -5,7 +5,6 @@ import scala.quoted.Quotes
 
 import org.mongodb.scala.bson.*
 import org.mongodb.scala.bson.BsonValue
-
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
 

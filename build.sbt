@@ -3,8 +3,8 @@
 
 inThisBuild(
   List(
-    organization := "ru.tinkoff",
-    homepage := Some(url("https://github.com/Tinkoff/oolong")),
+    organization := "com.github.leviysoft",
+    homepage := Some(url("https://github.com/leviysoft/oolong")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     developers := List(
       Developer(

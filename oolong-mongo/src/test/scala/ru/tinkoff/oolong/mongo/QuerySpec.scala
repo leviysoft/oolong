@@ -15,7 +15,6 @@ import org.mongodb.scala.bson.BsonInt64
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.bson.BsonValue
 import org.scalatest.funsuite.AnyFunSuite
-
 import ru.tinkoff.oolong.bson.BsonEncoder
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.dsl.*

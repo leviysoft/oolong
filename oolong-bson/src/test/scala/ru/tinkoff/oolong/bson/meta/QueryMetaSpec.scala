@@ -3,7 +3,6 @@ package ru.tinkoff.oolong.bson.meta
 import scala.util.Random
 
 import org.scalatest.funsuite.AnyFunSuite
-
 import ru.tinkoff.oolong.bson.meta.*
 import ru.tinkoff.oolong.bson.meta.QueryMeta
 import ru.tinkoff.oolong.bson.meta.queryMeta

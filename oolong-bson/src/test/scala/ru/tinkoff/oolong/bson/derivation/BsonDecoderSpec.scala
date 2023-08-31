@@ -7,7 +7,6 @@ import org.mongodb.scala.bson.*
 import org.scalatest.TryValues
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.given
 

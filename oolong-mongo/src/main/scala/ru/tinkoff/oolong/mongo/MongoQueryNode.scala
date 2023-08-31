@@ -4,7 +4,6 @@ import java.util.regex.Pattern
 import scala.quoted.Expr
 
 import org.mongodb.scala.bson.BsonDocument
-
 import ru.tinkoff.oolong.mongo.MongoQueryNode as MQ
 
 sealed trait MongoQueryNode

@@ -10,7 +10,6 @@ import org.scalactic.Equality
 import org.scalactic.Prettifier
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.given
 

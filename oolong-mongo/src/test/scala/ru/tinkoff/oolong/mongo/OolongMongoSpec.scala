@@ -20,7 +20,6 @@ import org.mongodb.scala.bson.BsonString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.compatible.Assertion
 import org.scalatest.flatspec.AsyncFlatSpec
-
 import ru.tinkoff.oolong.bson.*
 import ru.tinkoff.oolong.bson.given
 import ru.tinkoff.oolong.dsl.*

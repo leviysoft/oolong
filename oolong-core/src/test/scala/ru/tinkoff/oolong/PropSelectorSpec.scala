@@ -1,7 +1,6 @@
 package ru.tinkoff.oolong.mongo
 
 import org.scalatest.funsuite.AnyFunSuite
-
 import ru.tinkoff.oolong.PropSelectorTestMacro.prop
 import ru.tinkoff.oolong.dsl.*
 

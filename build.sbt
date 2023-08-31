@@ -3,6 +3,8 @@
 
 inThisBuild(
   List(
+    sonatypeCredentialHost := "s01.oss.sonatype.org",
+    sonatypeRepository := "https://s01.oss.sonatype.org/service/local",
     organization := "io.github.leviysoft",
     homepage := Some(url("https://github.com/leviysoft/oolong")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),

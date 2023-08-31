@@ -87,7 +87,8 @@ val root = (project in file("."))
   .aggregate(`oolong-bson`, `oolong-core`, `oolong-mongo`)
   .settings(
     pullRemoteCache := {},
-    pushRemoteCache := {}
+    pushRemoteCache := {},
+    publish / skip := true
   )
   .settings(
     addCommandAlias(

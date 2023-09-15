@@ -73,8 +73,6 @@ val `oolong-mongo` = (project in file("oolong-mongo"))
   .settings(
     libraryDependencies ++= Seq(
       ("org.mongodb.scala" %% "mongo-scala-driver"             % "4.6.1"  % Test).cross(CrossVersion.for3Use2_13),
-      "com.dimafeng"       %% "testcontainers-scala-scalatest" % "0.40.8" % Test,
-      "com.dimafeng"       %% "testcontainers-scala-mongodb"   % "0.40.8" % Test,
       "org.scalatest"      %% "scalatest"                      % "3.2.12" % Test,
       "org.slf4j"           % "slf4j-api"                      % "1.7.36" % Test,
       "org.slf4j"           % "slf4j-simple"                   % "1.7.36" % Test,
@@ -82,9 +80,21 @@ val `oolong-mongo` = (project in file("oolong-mongo"))
     Test / fork := true
   )
 
+val `oolong-mongo-it` = (project in file("oolong-mongo-it"))
+  .settings(Settings.common)
+  .dependsOn(`oolong-mongo` % "test->test;compile->compile")
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % Test,
+      "com.dimafeng" %% "testcontainers-scala-mongodb" % "0.40.8" % Test,
+    ),
+    Test / fork := true,
+    publish / skip := true
+  )
+
 val root = (project in file("."))
   .settings(Settings.common)
-  .aggregate(`oolong-bson`, `oolong-core`, `oolong-mongo`)
+  .aggregate(`oolong-bson`, `oolong-core`, `oolong-mongo`, `oolong-mongo-it`)
   .settings(
     pullRemoteCache := {},
     pushRemoteCache := {},

@@ -1,20 +1,26 @@
 package oolong.mongo
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, MongoDBContainer}
-import oolong.bson.{*, given}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.duration.*
+import scala.util.Failure
+import scala.util.Random
+import scala.util.Success
+
+import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.MongoDBContainer
+import oolong.bson.*
+import oolong.bson.given
 import oolong.dsl.*
-import oolong.mongo.MongoType
-import org.mongodb.scala.bson.{BsonDocument, BsonInt32, BsonString}
-import org.mongodb.scala.{MongoClient, ObservableFuture}
+import org.mongodb.scala.MongoClient
+import org.mongodb.scala.ObservableFuture
+import org.mongodb.scala.bson.BsonDocument
+import org.mongodb.scala.bson.BsonInt32
+import org.mongodb.scala.bson.BsonString
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.compatible.Assertion
 import org.scalatest.flatspec.AsyncFlatSpec
-
-import java.util.concurrent.atomic.AtomicReference
-import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration.*
-import scala.util.{Failure, Random, Success}
 
 class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with BeforeAndAfterAll {
 

@@ -1,8 +1,7 @@
 package oolong
 
+import scala.annotation.nowarn
 import scala.quoted.Expr
-
-import oolong.UExpr
 
 sealed private[oolong] trait UExpr
 
@@ -16,6 +15,7 @@ private[oolong] object UExpr {
 
   case class ScalaCode(code: Expr[Any]) extends UExpr
 
+  @nowarn("msg=unused explicit parameter") // used in macro
   sealed abstract class FieldUpdateExpr(prop: Prop)
 
   object FieldUpdateExpr {

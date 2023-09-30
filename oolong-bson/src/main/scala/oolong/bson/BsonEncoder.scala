@@ -1,11 +1,7 @@
 package oolong.bson
 
-import java.time.*
-
-import magnolia1.*
 import oolong.bson.annotation.*
 import oolong.bson.meta.QueryMeta
-import org.bson.BsonNull
 import org.mongodb.scala.bson.*
 
 /**
@@ -25,7 +21,6 @@ trait BsonEncoder[T]:
 
 object BsonEncoder {
 
-  import scala.compiletime.*
   import scala.deriving.Mirror
   import scala.quoted.*
 

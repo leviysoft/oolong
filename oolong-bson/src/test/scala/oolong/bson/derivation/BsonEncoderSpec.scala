@@ -14,7 +14,8 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 class BsonEncoderSpec extends AnyFunSuite with Matchers {
-  implicit private val bdocEq: Equality[BsonDocument] = (a: BsonDocument, b: Any) =>
+  @nowarn("msg=unused private member")
+  private given Equality[BsonDocument] = (a: BsonDocument, b: Any) =>
     b match {
       // noinspection SameElementsToEquals
       case BDocument(d2) =>
@@ -22,7 +23,7 @@ class BsonEncoderSpec extends AnyFunSuite with Matchers {
       case _ => false
     }
 
-  implicit private val bdocPretty: Prettifier =
+  private given Prettifier =
     Prettifier { case doc: BsonDocument => doc.toJson }
 
   test("encode XXXCaseClass") {

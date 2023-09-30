@@ -33,7 +33,6 @@ trait BsonDecoder[T]:
 
 object BsonDecoder {
 
-  import scala.compiletime.*
   import scala.deriving.Mirror
   import scala.quoted.*
 
@@ -137,7 +136,6 @@ object BsonDecoder {
     '{
       new BsonDecoder[T] {
         def fromBson(value: BsonValue): scala.util.Try[T] = {
-          val m = ${ mirror }
           val (discriminatorField, modifyValue) = ${ discriminator }.headOption
             .map(b => (b.name, b.renameValues))
             .getOrElse(BsonDiscriminator.ClassNameField -> identity[String])

@@ -3,12 +3,13 @@ package oolong.mongo
 import java.util.regex.Pattern
 import scala.quoted.Expr
 
-import oolong.mongo.MongoQueryNode as MQ
 import org.mongodb.scala.bson.BsonDocument
 
 sealed trait MongoQueryNode
 
 case object MongoQueryNode {
+  import MongoQueryNode as MQ
+
   case class Field(path: String) extends MQ
 
   case class OnField(field: Field, expr: MQ) extends MQ

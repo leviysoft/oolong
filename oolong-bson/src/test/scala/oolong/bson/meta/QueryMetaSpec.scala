@@ -1,12 +1,12 @@
 package oolong.bson.meta
 
-import scala.util.Random
+import scala.annotation.nowarn
 
 import oolong.bson.meta.*
-import oolong.bson.meta.QueryMeta
 import oolong.bson.meta.queryMeta
 import org.scalatest.funsuite.AnyFunSuite
 
+@nowarn("msg=unused local definition") // checks macro before expansion
 class QueryMetaSpec extends AnyFunSuite {
 
   case class LowLevel(fieldOne: String)

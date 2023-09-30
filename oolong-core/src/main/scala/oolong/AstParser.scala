@@ -162,7 +162,6 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         parse(term.asExpr)
 
       case '{ type t; ($x: Any).isInstanceOf[`t`] } =>
-        import quotes.reflect.*
         QExpr.TypeCheck(
           parse(x),
           new TypeInfo[t] {

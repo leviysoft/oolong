@@ -1,7 +1,6 @@
 package oolong.mongo
 
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.regex.Pattern
 
@@ -9,7 +8,6 @@ import oolong.bson.BsonEncoder
 import oolong.bson.given
 import oolong.bson.meta.QueryMeta
 import oolong.dsl.*
-import oolong.mongo.MongoType
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
 import org.mongodb.scala.bson.BsonDateTime
@@ -69,10 +67,6 @@ class QueryWithMetaSpec extends AnyFunSuite {
   test("$in") {
 
     val q = query[TestClass](f => List(1, 2, 3).contains(f.intField))
-
-    val q1 = query[TestClass](_.listField.contains(1.1))
-
-    val q2 = query[TestClass](!_.listField.contains(1.1))
 
     assert(
       q == BsonDocument(

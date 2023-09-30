@@ -2,9 +2,6 @@ package oolong
 
 import java.util.regex.Pattern
 import scala.quoted.Expr
-import scala.quoted.Type
-
-import oolong.QExpr
 
 sealed private[oolong] trait QExpr
 

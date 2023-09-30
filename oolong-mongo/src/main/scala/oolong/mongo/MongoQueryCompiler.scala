@@ -211,7 +211,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
             val (regex, options) = parsePattern(pattern)
             '{
               BsonDocument(
-                (Map("$regex"     -> BsonString(${ Expr(regex) })) ++ ${ Expr(options) }
+                (Map("$regex" -> BsonString(${ Expr(regex) })) ++ ${ Expr(options) }
                   .map("$options" -> BsonString(_))).toList
               )
             }

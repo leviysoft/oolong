@@ -126,8 +126,8 @@ class UpdateSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        ("$set"   -> BsonDocument("optionField" -> BsonInt64(2L), "intField" -> BsonInt32(19))),
-        ("$unset" -> BsonDocument("dateField" -> BsonString("")))
+        "$set"   -> BsonDocument("optionField" -> BsonInt64(2L), "intField" -> BsonInt32(19)),
+        "$unset" -> BsonDocument("dateField" -> BsonString(""))
       )
     )
   }

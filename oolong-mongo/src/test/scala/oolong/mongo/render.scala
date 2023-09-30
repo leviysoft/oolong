@@ -12,7 +12,7 @@ def renderUpdateImpl[Doc: Type](
 )(using quotes: Quotes) =
   import MongoUpdateCompiler.*
   val (_, query) = buildUpdateAst(input)
-  val result         = render(query)
+  val result     = render(query)
   Expr(result)
 
 inline def renderQuery[Doc](inline input: Doc => Boolean): String =
@@ -23,5 +23,5 @@ def renderQueryImpl[Doc: Type](
 )(using quotes: Quotes) =
   import MongoQueryCompiler.*
   val (_, query) = buildQueryAst(input)
-  val result         = render(query)
+  val result     = render(query)
   Expr(result)

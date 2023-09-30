@@ -133,8 +133,8 @@ class UpdateWithMetaSpec extends AnyFunSuite {
 
     assert(
       q == BsonDocument(
-        ("$set"   -> BsonDocument("option_field" -> BsonInt64(2L), "int_field" -> BsonInt32(19))),
-        ("$unset" -> BsonDocument("date_field" -> BsonString("")))
+        "$set"   -> BsonDocument("option_field" -> BsonInt64(2L), "int_field" -> BsonInt32(19)),
+        "$unset" -> BsonDocument("date_field" -> BsonString(""))
       )
     )
   }

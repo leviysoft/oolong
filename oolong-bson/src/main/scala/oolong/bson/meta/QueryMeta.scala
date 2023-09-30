@@ -178,6 +178,6 @@ end summonChildMeta
 def merge(first: Map[String, String], children: Map[String, Map[String, String]]) =
   first.flatMap { case (first, second) =>
     children.getOrElse(first, Map.empty).map { case (firstA, secondA) =>
-      (s"$first.$firstA" -> s"$second.$secondA")
+      s"$first.$firstA" -> s"$second.$secondA"
     } + (first -> second)
   }

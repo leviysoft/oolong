@@ -50,4 +50,6 @@ private[oolong] object QExpr {
   case class Mod(x: QExpr, divisor: QExpr, remainder: QExpr) extends QExpr
 
   case class ElemMatch(x: QExpr, y: QExpr) extends QExpr
+
+  case class Projection(fields: Vector[String]) extends QExpr
 }

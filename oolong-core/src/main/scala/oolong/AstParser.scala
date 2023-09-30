@@ -19,27 +19,27 @@ private[oolong] trait AstParser {
 private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
   import quotes.reflect.*
 
-  trait MakeConst[T, Ast] {
-    def apply(t: T): Ast
-  }
-
   override def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr = {
 
-    given makeConst[T]: MakeConst[T, QExpr] = (t: T) => QExpr.Constant(t)
+    def makeConst[T](t: T) =
+      QExpr.Constant(t)
+
+    def constOrAbort[T](expr: Expr[T])(using FromExpr[T]): QExpr.Constant[T] =
+      QExpr.Constant(extractConstant(expr.value))
 
     def parseIterable[T: Type](expr: Expr[Seq[T] | Set[T]]): List[QExpr] | QExpr =
       expr match {
         case AsIterable(elems) =>
           elems.map {
-            case '{ $t: Boolean } => makeConst(extractConstant[Boolean](t.value))
-            case '{ $t: Long }    => makeConst(extractConstant[Long](t.value))
-            case '{ $t: Int }     => makeConst(extractConstant[Int](t.value))
-            case '{ $t: Short }   => makeConst(extractConstant[Short](t.value))
-            case '{ $t: Byte }    => makeConst(extractConstant[Byte](t.value))
-            case '{ $t: Double }  => makeConst(extractConstant[Double](t.value))
-            case '{ $t: Float }   => makeConst(extractConstant[Float](t.value))
-            case '{ $t: String }  => makeConst(extractConstant[String](t.value))
-            case '{ $t: Char }    => makeConst(extractConstant[Char](t.value))
+            case '{ $t: Boolean } => constOrAbort(t)
+            case '{ $t: Long }    => constOrAbort(t)
+            case '{ $t: Int }     => constOrAbort(t)
+            case '{ $t: Short }   => constOrAbort(t)
+            case '{ $t: Byte }    => constOrAbort(t)
+            case '{ $t: Double }  => constOrAbort(t)
+            case '{ $t: Float }   => constOrAbort(t)
+            case '{ $t: String }  => constOrAbort(t)
+            case '{ $t: Char }    => constOrAbort(t)
             case '{ lift($x: t) } => QExpr.ScalaCode(x)
             case x                => QExpr.ScalaCode(x) // are we sure we need this this case?
           }.toList
@@ -181,8 +181,6 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
   }
 
   override def parseUExpr[Doc: Type](input: Expr[Updater[Doc] => Updater[Doc]]): UExpr = {
-    given makeConst[T]: MakeConst[T, UExpr] = (t: T) => UExpr.Constant(t)
-
     val (paramName, rhs) = unwrapLambda(input.asTerm)
 
     // format: off
@@ -268,23 +266,25 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
   private def extractConstant[T](valueOpt: Option[T]): T =
     valueOpt.getOrElse(report.errorAndAbort("Use `lift` for runtime values"))
 
-  private def getConstant[T: Type, Ast](expr: Expr[T])(using makeConst: MakeConst[T, Ast]): Ast =
+  private def getConstant[T: Type](expr: Expr[T]): UExpr = {
+    def constOrAbort(valueOpt: Option[T]) = UExpr.Constant(extractConstant(valueOpt))
+
     expr match {
-      case '{ ${ t }: Long }    => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Int }     => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Short }   => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Byte }    => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Double }  => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Float }   => makeConst(extractConstant(t.value))
-      case '{ ${ t }: String }  => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Char }    => makeConst(extractConstant(t.value))
-      case '{ ${ t }: Boolean } => makeConst(extractConstant(t.value))
+      case '{ ${ t }: Long }    => constOrAbort(t.value)
+      case '{ ${ t }: Int }     => constOrAbort(t.value)
+      case '{ ${ t }: Short }   => constOrAbort(t.value)
+      case '{ ${ t }: Byte }    => constOrAbort(t.value)
+      case '{ ${ t }: Double }  => constOrAbort(t.value)
+      case '{ ${ t }: Float }   => constOrAbort(t.value)
+      case '{ ${ t }: String }  => constOrAbort(t.value)
+      case '{ ${ t }: Char }    => constOrAbort(t.value)
+      case '{ ${ t }: Boolean } => constOrAbort(t.value)
       case _ =>
         report.errorAndAbort("Unsupported constant type, consider using `lift`")
     }
+  }
 
   private def getValue(expr: Expr[Any]): UExpr =
-    given makeConst[T]: MakeConst[T, UExpr] = (t: T) => UExpr.Constant(t)
     expr match
       case '{ lift($x) }     => UExpr.ScalaCode(x)
       case '{ $constant: t } => getConstant(constant)

@@ -12,11 +12,36 @@ import oolong.dsl.*
 private[oolong] trait AstParser {
   def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr
 
+  def parseProjectionQExpr[Doc: Type, Proj: Type]: QExpr
+
   def parseUExpr[Doc: Type](input: Expr[Updater[Doc] => Updater[Doc]]): UExpr
 }
 
 private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
   import quotes.reflect.*
+
+  override def parseProjectionQExpr[Doc: Type, Proj: Type]: QExpr =
+    QExpr.Projection(projectionFields[Doc, Proj])
+
+  private def projectionFields[Doc: Type, Proj: Type]: Vector[String] =
+    import quotes.reflect.*
+    val baseTypeRepr       = TypeRepr.of[Doc]
+    val projectionTypeRepr = TypeRepr.of[Proj]
+
+    val fieldsAndTypesBase = baseTypeRepr.typeSymbol.caseFields
+      .map(field => field.name -> baseTypeRepr.memberType(field))
+      .toMap
+
+    val fieldsAndTypesProjection = projectionTypeRepr.typeSymbol.caseFields
+      .map(field => field.name -> projectionTypeRepr.memberType(field))
+      .toMap
+
+    val result = fieldsAndTypesProjection.forall { case (field, fieldType) =>
+      fieldsAndTypesBase.get(field).exists(_ =:= fieldType)
+    }
+
+    if (!result) report.errorAndAbort(s"${projectionTypeRepr.show} is not a projection of ${baseTypeRepr.show}")
+    fieldsAndTypesProjection.keys.toVector
 
   override def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr = {
 

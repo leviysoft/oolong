@@ -21,6 +21,8 @@ inline def update[Doc](inline input: Updater[Doc] => Updater[Doc]): BsonDocument
  */
 inline def query[Doc](inline input: Doc => Boolean): BsonDocument = ${ queryImpl('input) }
 
+inline def projection[Doc, Projection]: BsonDocument = ${ projectionImpl[Doc, Projection] }
+
 private[oolong] def updateImpl[Doc: Type](
     input: Expr[Updater[Doc] => Updater[Doc]]
 )(using quotes: Quotes): Expr[BsonDocument] = {
@@ -66,3 +68,15 @@ private[oolong] def queryImpl[Doc: Type](input: Expr[Doc => Boolean])(using quot
 
   target(optimized)
 }
+
+private[oolong] def projectionImpl[Doc: Type, Projection: Type](using quotes: Quotes): Expr[BsonDocument] =
+  import quotes.reflect.*
+  import MongoQueryCompiler.*
+
+  val parser = new DefaultAstParser
+  val ast    = parser.parseProjectionQExpr[Doc, Projection]
+  val repr   = opt[Doc](ast)
+
+  report.info("Optimized AST:\n" + pprint(ast) + "\nGenerated Mongo query:\n" + render(repr))
+
+  target(repr)

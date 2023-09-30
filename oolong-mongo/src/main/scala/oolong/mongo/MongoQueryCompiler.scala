@@ -103,6 +103,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
             case or: MQ.Or     => MQ.ElemMatch(or)
             case _             => report.errorAndAbort(s"Wrong condition: ${cond}")
           MQ.OnField(getField(elemMatch.x)(renames), query)
+        case proj: QExpr.Projection => MQ.Projection(proj.fields.map(name => renames.getOrElse(name, name)))
       }
 
     rec(ast, meta)
@@ -180,6 +181,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Mod(divisor, remainder) => "{ \"$mod\": [" + rec(divisor) + "," + rec(remainder) + "] }"
         case MQ.ElemMatch(expr) =>
           "{ \"$elemMatch\": { " + rec(expr) + " } }"
+        case MQ.Projection(fields) => s"""{ ${fields.map(f => s"\"$f\": 1").mkString(", ")} }"""
         case MQ.Field(field) =>
           report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
     end rec
@@ -202,9 +204,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case or: MQ.Or   => handleOr(or)
       case MQ.OnField(prop, x) if prop.path.nonEmpty =>
         '{ BsonDocument(${ Expr(prop.path) } -> ${ parseOperators(x) }) }
-      case MQ.OnField(_, x) => parseOperatorsAsBsonDocument(x)
-      case MQ.Subquery(doc) => doc
-      case _                => report.errorAndAbort(s"given node can't be in that position ${optRepr}")
+      case MQ.OnField(_, x)    => parseOperatorsAsBsonDocument(x)
+      case MQ.Subquery(doc)    => doc
+      case proj: MQ.Projection => handleProjection(proj)
+      case _                   => report.errorAndAbort(s"given node can't be in that position ${optRepr}")
     }
 
   private def parseOperators(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonValue] =
@@ -326,6 +329,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case MQ.ScalaCode(code) => BsonUtils.extractLifted(code)
       case _                  => report.errorAndAbort(s"Given type is not literal constant")
     }
+
+  private def handleProjection(query: MQ.Projection)(using Quotes): Expr[BsonDocument] =
+    val expr = Expr.ofList(query.fields.map(Expr(_)))
+    '{ BsonDocument(${ expr }.map(_ -> BsonInt32(1))) }
 
   private def parsePattern(pattern: Pattern): (String, Option[String]) =
     val flags = List(

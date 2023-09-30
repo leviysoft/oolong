@@ -149,7 +149,8 @@ private[oolong] object Utils:
         parseFlagsRec(term)(List.empty)
 
       def rec(term: Term): Option[Pattern] = term match
-        case Typed(term, _) => rec(term)
+        case Inlined(_, _, term) => rec(term)
+        case Typed(term, _)      => rec(term)
         case Apply(
               Select(Ident("Pattern"), "compile"),
               List(
@@ -158,6 +159,13 @@ private[oolong] object Utils:
               )
             ) =>
           Some(Pattern.compile(pattern, flags))
+        case Apply(
+              Select(Ident("Pattern"), "compile"),
+              List(
+                Inlined(_, _, Literal(StringConstant(pattern)))
+              )
+            ) =>
+          Some(Pattern.compile(pattern))
         case Apply(Select(Ident("Pattern"), "compile"), List(Literal(StringConstant(pattern)))) =>
           Some(Pattern.compile(pattern))
         case Apply(

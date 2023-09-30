@@ -18,7 +18,6 @@ import scala.util.Success
 import scala.util.Try
 import scala.util.matching.Regex
 
-import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.bson.BsonNull
 import org.mongodb.scala.bson.BsonObjectId
 import org.mongodb.scala.bson.BsonValue

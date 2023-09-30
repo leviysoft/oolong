@@ -1,8 +1,6 @@
 package oolong.mongo
 
 import java.time.LocalDate
-import java.time.OffsetTime
-import java.time.ZoneId
 import java.time.ZoneOffset
 
 import oolong.bson.BsonEncoder
@@ -10,12 +8,10 @@ import oolong.bson.given
 import oolong.bson.meta.QueryMeta
 import oolong.dsl.*
 import org.mongodb.scala.bson.BsonArray
-import org.mongodb.scala.bson.BsonBoolean
 import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.bson.BsonInt32
 import org.mongodb.scala.bson.BsonInt64
-import org.mongodb.scala.bson.BsonNull
 import org.mongodb.scala.bson.BsonString
 import org.scalatest.funsuite.AnyFunSuite
 

@@ -5,7 +5,6 @@ import scala.quoted.Quotes
 
 import oolong.bson.BsonEncoder
 import oolong.bson.given
-import org.mongodb.scala.bson.*
 import org.mongodb.scala.bson.BsonValue
 
 private[oolong] object BsonUtils {

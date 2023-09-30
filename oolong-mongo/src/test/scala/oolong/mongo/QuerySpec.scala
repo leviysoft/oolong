@@ -1,14 +1,12 @@
 package oolong.mongo
 
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.regex.Pattern
 
 import oolong.bson.BsonEncoder
 import oolong.bson.given
 import oolong.dsl.*
-import oolong.mongo.MongoType
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
 import org.mongodb.scala.bson.BsonDateTime

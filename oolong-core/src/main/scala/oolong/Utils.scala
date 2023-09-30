@@ -4,8 +4,6 @@ import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.quoted.*
 
-import oolong.Utils.AsRegexPattern
-
 private[oolong] object Utils:
 
   def useWithinMacro(name: String) =
@@ -185,5 +183,4 @@ private[oolong] object Utils:
   object PatternInstance:
     given FromExpr[Pattern] = new FromExpr[Pattern]:
       def unapply(expr: Expr[Pattern])(using q: Quotes): Option[Pattern] =
-        import q.reflect.*
         AsRegexPattern.unapply(expr)

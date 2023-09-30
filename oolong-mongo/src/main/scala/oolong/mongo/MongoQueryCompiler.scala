@@ -1,12 +1,10 @@
 package oolong.mongo
 
 import java.util.regex.Pattern
-import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.quoted.Expr
 import scala.quoted.Quotes
 import scala.quoted.Type
-import scala.util.chaining.*
 
 import oolong.*
 import oolong.Utils.PatternInstance.given

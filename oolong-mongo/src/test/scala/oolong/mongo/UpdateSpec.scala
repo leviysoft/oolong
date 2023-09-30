@@ -94,7 +94,7 @@ class UpdateSpec extends AnyFunSuite {
   }
 
   test("$inc") {
-    val q = update[TestClass](_.inc(_.intField, 1))
+    val q    = update[TestClass](_.inc(_.intField, 1))
     val repr = renderUpdate[TestClass](_.inc(_.intField, 1))
 
     test(

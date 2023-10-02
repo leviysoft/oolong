@@ -9,7 +9,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class ProjectionSpec extends AnyFunSuite {
 
-  case class Inner(a: Int)
+  case class Inner(a: Int, b: BigDecimal)
 
   case class BaseClass(
       intField: Int,
@@ -18,10 +18,12 @@ class ProjectionSpec extends AnyFunSuite {
       innerClassField: Inner
   )
 
+  case class InnerProjection(a: Int)
+
   case class ProjectionClass(
       stringField1: String,
       timeField: Instant,
-      innerClassField: Inner
+      innerClassField: InnerProjection
   )
 
   test("projection") {
@@ -48,5 +50,17 @@ class ProjectionSpec extends AnyFunSuite {
         "inner_class_field" -> BsonInt32(1)
       )
     )
+  }
+
+  test("projection fails") {
+    case class BaseInner(d: Int)
+    case class Base(a: Int, b: String, c: BaseInner)
+
+    case class Inner(d: Double)
+    case class NotProjection(a: Int, c: Inner)
+
+    assertDoesNotCompile("projection[Base, NotProjection]")
+
+
   }
 }

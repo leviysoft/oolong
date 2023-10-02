@@ -25,23 +25,11 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
   private def projectionFields[Doc: Type, Proj: Type]: Vector[String] =
     import quotes.reflect.*
-    val baseTypeRepr       = TypeRepr.of[Doc]
-    val projectionTypeRepr = TypeRepr.of[Proj]
+    val result = checkIfProjection[Doc, Proj]
 
-    val fieldsAndTypesBase = baseTypeRepr.typeSymbol.caseFields
-      .map(field => field.name -> baseTypeRepr.memberType(field))
-      .toMap
+    if (!result) report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Doc].show}")
+    TypeRepr.of[Proj].typeSymbol.caseFields.map(_.name).toVector
 
-    val fieldsAndTypesProjection = projectionTypeRepr.typeSymbol.caseFields
-      .map(field => field.name -> projectionTypeRepr.memberType(field))
-      .toMap
-
-    val result = fieldsAndTypesProjection.forall { case (field, fieldType) =>
-      fieldsAndTypesBase.get(field).exists(_ =:= fieldType)
-    }
-
-    if (!result) report.errorAndAbort(s"${projectionTypeRepr.show} is not a projection of ${baseTypeRepr.show}")
-    fieldsAndTypesProjection.keys.toVector
 
   override def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr = {
 

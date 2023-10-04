@@ -1,6 +1,8 @@
 package oolong.bson.meta
 
+import java.time.Instant
 import scala.annotation.nowarn
+import scala.util.Random
 
 import oolong.bson.meta.*
 import oolong.bson.meta.queryMeta
@@ -170,6 +172,42 @@ class QueryMetaSpec extends AnyFunSuite {
         )
       )
     )
+  }
+
+  test("Query meta derived for projection") {
+    case class Inner(a: Int, b: BigDecimal)
+
+    case class BaseClass(
+        intField: Int,
+        stringField: String,
+        timeField: Instant,
+        innerClassField: Inner
+    )
+
+    case class InnerProjection(a: Int)
+
+    case class ProjectionClass(
+        stringField: String,
+        timeField: Instant,
+        innerClassField: InnerProjection
+    )
+
+    inline given QueryMeta[Inner] = queryMeta(_.a -> "field_one", _.b -> "missing")
+    inline given QueryMeta[BaseClass] =
+      queryMeta(_.innerClassField -> "inner_classField", _.timeField -> "time", _.intField -> "not_present")
+
+    inline given QueryMeta[ProjectionClass] = QueryMeta.deriveForProjection[BaseClass, ProjectionClass]
+
+    assert(
+      summon[QueryMeta[ProjectionClass]] == QueryMeta[ProjectionClass](
+        Map(
+          "innerClassField"   -> "inner_classField",
+          "innerClassField.a" -> "inner_classField.field_one",
+          "timeField"         -> "time",
+        )
+      )
+    )
+
   }
 
 }

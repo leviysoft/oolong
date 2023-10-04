@@ -61,6 +61,5 @@ class ProjectionSpec extends AnyFunSuite {
 
     assertDoesNotCompile("projection[Base, NotProjection]")
 
-
   }
 }

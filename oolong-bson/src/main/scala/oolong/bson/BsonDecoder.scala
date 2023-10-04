@@ -116,7 +116,7 @@ object BsonDecoder {
                         .toRight(DeserializationError(s"Unable to decode field ${name}", exc))
                     case otherwise => otherwise
                   }
-                } yield (result.asInstanceOf[AnyRef])
+                } yield result.asInstanceOf[AnyRef]
               } match {
               case (Nil, rights)   => Success(rights)
               case (first :: _, _) => Failure(first)

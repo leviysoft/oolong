@@ -33,25 +33,14 @@ object QueryMeta:
     import q.reflect.*
     if !Projection.checkIfProjection[Base, Proj] then
       report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Base].show}")
-    val projectionMeta = allPaths[Proj].flatMap { path =>
-      meta.valueOrAbort.map.get(path).map(path -> _)
-    }.toMap
+    val projectionMeta = QueryPath
+      .allPaths[Proj](withBase = true)
+      .flatMap { path =>
+        meta.valueOrAbort.map.get(path).map(path -> _)
+      }
+      .toMap
 
     '{ QueryMeta.apply[Proj](${ Expr(projectionMeta) }) }
-
-  private def allPaths[T: Type](using q: Quotes): Vector[String] =
-    import q.reflect.*
-    val typeRepr                          = TypeRepr.of[T]
-    val caseFieldsNames: Vector[String]   = typeRepr.typeSymbol.caseFields.map(_.name).toVector
-    val caseFieldsTypes: Vector[TypeRepr] = typeRepr.typeSymbol.caseFields.map(s => typeRepr.memberType(s)).toVector
-    caseFieldsNames
-      .zip(caseFieldsTypes)
-      .flatMap { case (name, typ) =>
-        if (typ.typeSymbol.flags.is(Flags.Case) && typ.typeSymbol.caseFields.nonEmpty)
-          typ.asType match
-            case '[fieldType] => Vector(name, (name +: allPaths[fieldType]).mkString("."))
-        else Vector(name)
-      }
 
   // Adapted from enumeratum: https://github.com/lloydmeta/enumeratum
 

@@ -82,3 +82,24 @@ object Projection:
         else baseFieldType =:= fieldType
       }
     }
+
+object QueryPath:
+  /**
+   * @param withBase
+   *   determines if field name (if the type is case class) should be separately included
+   */
+  def allPaths[T: Type](withBase: Boolean)(using q: Quotes): Vector[String] =
+    import q.reflect.*
+    val typeRepr                          = TypeRepr.of[T]
+    val caseFieldsNames: Vector[String]   = typeRepr.typeSymbol.caseFields.map(_.name).toVector
+    val caseFieldsTypes: Vector[TypeRepr] = typeRepr.typeSymbol.caseFields.map(s => typeRepr.memberType(s)).toVector
+    caseFieldsNames
+      .zip(caseFieldsTypes)
+      .flatMap { case (name, typ) =>
+        if (typ.typeSymbol.flags.is(Flags.Case) && typ.typeSymbol.caseFields.nonEmpty)
+          typ.asType match
+            case '[fieldType] =>
+              if withBase then Vector(name, (name +: allPaths[fieldType](withBase)).mkString("."))
+              else Vector((name +: allPaths[fieldType](withBase)).mkString("."))
+        else Vector(name)
+      }

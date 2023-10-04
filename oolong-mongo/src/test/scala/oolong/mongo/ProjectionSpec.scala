@@ -9,7 +9,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class ProjectionSpec extends AnyFunSuite {
 
-  case class Inner(a: Int, b: BigDecimal)
+  case class Inner(fieldToKeep: Int, b: BigDecimal)
 
   case class BaseClass(
       intField: Int,
@@ -18,7 +18,7 @@ class ProjectionSpec extends AnyFunSuite {
       innerClassField: Inner
   )
 
-  case class InnerProjection(a: Int)
+  case class InnerProjection(fieldToKeep: Int)
 
   case class ProjectionClass(
       stringField1: String,
@@ -31,9 +31,9 @@ class ProjectionSpec extends AnyFunSuite {
 
     assert(
       proj == BsonDocument(
-        "stringField1"    -> BsonInt32(1),
-        "timeField"       -> BsonInt32(1),
-        "innerClassField" -> BsonInt32(1)
+        "stringField1"                -> BsonInt32(1),
+        "timeField"                   -> BsonInt32(1),
+        "innerClassField.fieldToKeep" -> BsonInt32(1)
       )
     )
   }
@@ -41,13 +41,14 @@ class ProjectionSpec extends AnyFunSuite {
   test("projection with BaseClass QueryMeta") {
     val proj = projection[BaseClass, ProjectionClass]
 
+    inline given QueryMeta[Inner] = QueryMeta.snakeCase
     inline given QueryMeta[BaseClass] = QueryMeta.snakeCase
 
     assert(
       proj == BsonDocument(
-        "string_field1"     -> BsonInt32(1),
-        "time_field"        -> BsonInt32(1),
-        "inner_class_field" -> BsonInt32(1)
+        "string_field1"                   -> BsonInt32(1),
+        "time_field"                      -> BsonInt32(1),
+        "inner_class_field.field_to_keep" -> BsonInt32(1)
       )
     )
   }

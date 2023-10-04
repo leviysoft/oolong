@@ -8,6 +8,7 @@ import scala.quoted.*
 import oolong.UExpr.FieldUpdateExpr
 import oolong.Utils.*
 import oolong.bson.utils.Projection
+import oolong.bson.utils.QueryPath
 import oolong.dsl.*
 
 private[oolong] trait AstParser {
@@ -29,7 +30,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
     val result = Projection.checkIfProjection[Doc, Proj]
 
     if (!result) report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Doc].show}")
-    TypeRepr.of[Proj].typeSymbol.caseFields.map(_.name).toVector
+    QueryPath.allPaths[Proj](withBase = false)
 
   override def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr = {
 

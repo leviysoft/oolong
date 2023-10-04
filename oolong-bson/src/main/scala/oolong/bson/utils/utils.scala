@@ -55,3 +55,30 @@ object TupleLambda {
         Some(first -> second)
       case _ => None
 }
+
+object Projection:
+  def checkIfProjection[Doc: Type, Proj: Type](using
+      quotes: Quotes
+  ): Boolean =
+    import quotes.reflect.*
+    val baseTypeRepr       = TypeRepr.of[Doc]
+    val projectionTypeRepr = TypeRepr.of[Proj]
+    val fieldsAndTypesBase: Map[String, TypeRepr] = baseTypeRepr.typeSymbol.caseFields
+      .map(field => field.name -> baseTypeRepr.memberType(field))
+      .toMap
+
+    val fieldsAndTypesProjection: Map[String, TypeRepr] = projectionTypeRepr.typeSymbol.caseFields
+      .map(field => field.name -> projectionTypeRepr.memberType(field))
+      .toMap
+
+    fieldsAndTypesProjection.forall { case (field, fieldType) =>
+      fieldsAndTypesBase.get(field).exists { baseFieldType =>
+        if baseFieldType.typeSymbol.flags.is(Flags.Case) &&
+          baseFieldType.typeSymbol.caseFields.nonEmpty
+        then
+          (baseFieldType.asType, fieldType.asType) match
+            case ('[base], '[proj]) =>
+              checkIfProjection[base, proj]
+        else baseFieldType =:= fieldType
+      }
+    }

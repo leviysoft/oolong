@@ -24,6 +24,35 @@ object QueryMeta:
         case _ =>
           None
 
+  inline def deriveForProjection[Base, Proj](using inline q: QueryMeta[Base]): QueryMeta[Proj] =
+    ${ deriveForProjectionImpl[Base, Proj]('q) }
+
+  def deriveForProjectionImpl[Base: Type, Proj: Type](meta: Expr[QueryMeta[Base]])(using
+      q: Quotes
+  ): Expr[QueryMeta[Proj]] =
+    import q.reflect.*
+    if !Projection.checkIfProjection[Base, Proj] then
+      report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Base].show}")
+    val projectionMeta = allPaths[Proj].flatMap { path =>
+      meta.valueOrAbort.map.get(path).map(path -> _)
+    }.toMap
+
+    '{ QueryMeta.apply[Proj](${ Expr(projectionMeta) }) }
+
+  private def allPaths[T: Type](using q: Quotes): Vector[String] =
+    import q.reflect.*
+    val typeRepr                          = TypeRepr.of[T]
+    val caseFieldsNames: Vector[String]   = typeRepr.typeSymbol.caseFields.map(_.name).toVector
+    val caseFieldsTypes: Vector[TypeRepr] = typeRepr.typeSymbol.caseFields.map(s => typeRepr.memberType(s)).toVector
+    caseFieldsNames
+      .zip(caseFieldsTypes)
+      .flatMap { case (name, typ) =>
+        if (typ.typeSymbol.flags.is(Flags.Case) && typ.typeSymbol.caseFields.nonEmpty)
+          typ.asType match
+            case '[fieldType] => Vector(name, (name +: allPaths[fieldType]).mkString("."))
+        else Vector(name)
+      }
+
   // Adapted from enumeratum: https://github.com/lloydmeta/enumeratum
 
   private val regexp1: Pattern    = Pattern.compile("([A-Z]+)([A-Z][a-z])")
@@ -126,7 +155,7 @@ def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(usin
   import q.reflect.*
   fieldsNames
     .zip(fieldsTypes)
-    .map { case (name, s) =>
+    .flatMap { case (name, s) =>
       s match
         case '[Option[t]] =>
           Expr.summon[QueryMeta[t]] match
@@ -159,7 +188,6 @@ def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(usin
               Some(name -> summonChildMeta[t])
             case _ => None
     }
-    .flatten
     .toMap
 end extractFieldsMap
 

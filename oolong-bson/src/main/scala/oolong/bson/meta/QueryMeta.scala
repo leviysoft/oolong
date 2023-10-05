@@ -27,16 +27,18 @@ object QueryMeta:
   inline def deriveForProjection[Base, Proj](using inline q: QueryMeta[Base]): QueryMeta[Proj] =
     ${ deriveForProjectionImpl[Base, Proj]('q) }
 
-  def deriveForProjectionImpl[Base: Type, Proj: Type](meta: Expr[QueryMeta[Base]])(using
+  private def deriveForProjectionImpl[Base: Type, Proj: Type](meta: Expr[QueryMeta[Base]])(using
       q: Quotes
   ): Expr[QueryMeta[Proj]] =
     import q.reflect.*
     if !Projection.checkIfProjection[Base, Proj] then
       report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Base].show}")
     val projectionMeta = QueryPath
-      .allPaths[Proj](withBase = true)
+      .allPaths[Proj]
       .flatMap { path =>
-        meta.valueOrAbort.map.get(path).map(path -> _)
+        meta.valueOrAbort.map
+          .get(path)
+          .map(path -> _)
       }
       .toMap
 

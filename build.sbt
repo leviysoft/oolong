@@ -49,6 +49,7 @@ val `oolong-bson` = (project in file("oolong-bson"))
     libraryDependencies ++= Seq(
       ("org.mongodb.scala"           %% "mongo-scala-bson" % "4.10.2").cross(CrossVersion.for3Use2_13),
       "com.softwaremill.magnolia1_3" %% "magnolia"         % "1.3.3",
+      "com.lihaoyi"                  %% "pprint"           % "0.8.1"    % Compile,
       "org.scalatest"                %% "scalatest"        % "3.2.15"   % Test,
       "org.scalatestplus"            %% "scalacheck-1-17"  % "3.2.17.0" % Test,
       "org.scalacheck"               %% "scalacheck"       % "1.17.0"   % Test

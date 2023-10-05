@@ -30,7 +30,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
     val result = Projection.checkIfProjection[Doc, Proj]
 
     if (!result) report.errorAndAbort(s"${TypeRepr.of[Proj].show} is not a projection of ${TypeRepr.of[Doc].show}")
-    QueryPath.allPaths[Proj](withBase = false)
+    Projection.projectionPaths[Doc, Proj]
 
   override def parseQExpr[Doc: Type](input: Expr[Doc => Boolean]): QExpr = {
 

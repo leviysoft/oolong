@@ -83,23 +83,47 @@ object Projection:
       }
     }
 
+  def projectionPaths[Doc: Type, Proj: Type](using quotes: Quotes): Vector[String] =
+    def projectionPathsInner[Doc1: Type, Proj1: Type](using quotes: Quotes): Vector[Vector[String]] =
+      import quotes.reflect.*
+      val baseTypeRepr       = TypeRepr.of[Doc1]
+      val projectionTypeRepr = TypeRepr.of[Proj1]
+      val fieldsAndTypesBase: Map[String, TypeRepr] = baseTypeRepr.typeSymbol.caseFields
+        .map(field => field.name -> baseTypeRepr.memberType(field))
+        .toMap
+
+      val fieldsAndTypesProjection: Map[String, TypeRepr] = projectionTypeRepr.typeSymbol.caseFields
+        .map(field => field.name -> projectionTypeRepr.memberType(field))
+        .toMap
+
+      val paths = fieldsAndTypesBase.toVector.flatMap { case (field, baseType) =>
+        fieldsAndTypesProjection.get(field).map { projFieldType =>
+          if baseType =:= projFieldType then Vector(Vector(field))
+          else
+            (baseType.asType, projFieldType.asType) match
+              case ('[base], '[proj]) =>
+                val innerPaths = projectionPathsInner[base, proj].map(_.prepended(field))
+                if innerPaths.isEmpty then Vector(Vector(field))
+                else innerPaths
+        }
+      }.flatten
+      if paths.size == fieldsAndTypesBase.size && paths.forall(_.size == 1) then Vector.empty
+      else paths
+
+    projectionPathsInner[Doc, Proj].map(_.mkString("."))
+
 object QueryPath:
-  /**
-   * @param withBase
-   *   determines if field name (if the type is case class) should be separately included
-   */
-  def allPaths[T: Type](withBase: Boolean)(using q: Quotes): Vector[String] =
+  def allPaths[T: Type](using q: Quotes): Vector[String] =
     import q.reflect.*
     val typeRepr                          = TypeRepr.of[T]
     val caseFieldsNames: Vector[String]   = typeRepr.typeSymbol.caseFields.map(_.name).toVector
     val caseFieldsTypes: Vector[TypeRepr] = typeRepr.typeSymbol.caseFields.map(s => typeRepr.memberType(s)).toVector
     caseFieldsNames
-      .zip(caseFieldsTypes)
+      .lazyZip(caseFieldsTypes)
       .flatMap { case (name, typ) =>
         if (typ.typeSymbol.flags.is(Flags.Case) && typ.typeSymbol.caseFields.nonEmpty)
           typ.asType match
             case '[fieldType] =>
-              if withBase then Vector(name, (name +: allPaths[fieldType](withBase)).mkString("."))
-              else Vector((name +: allPaths[fieldType](withBase)).mkString("."))
+              Vector(name, (name +: allPaths[fieldType]).mkString("."))
         else Vector(name)
       }

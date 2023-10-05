@@ -63,4 +63,37 @@ class ProjectionSpec extends AnyFunSuite {
     assertDoesNotCompile("projection[Base, NotProjection]")
 
   }
+
+  test("short path for classes with identical structure") {
+
+    case class Inner1(field1: String, field2: Double)
+    case class Inner2(field3: Int, field4: Byte)
+    case class Inner(inner1: Inner1, inner2: Inner2)
+
+    case class Base(fieldTheSame: Inner, fieldFullProjection: Inner, fieldProjection: Inner)
+
+    case class Projection(
+        fieldTheSame: Inner,
+        fieldFullProjection: InnerProjection,
+        fieldProjection: InnerNotFullProjection
+    )
+
+    case class Inner1Projection(field1: String, field2: Double)
+    case class Inner2Projection(field3: Int, field4: Byte)
+    case class InnerProjection(inner1: Inner1Projection, inner2: Inner2Projection)
+
+    case class Inner1NotFullProjection(field1: String)
+    case class InnerNotFullProjection(inner1: Inner1NotFullProjection, inner2: Inner2Projection)
+
+    val proj = projection[Base, Projection]
+
+    assert(
+      proj == BsonDocument(
+        "fieldTheSame"                  -> BsonInt32(1),
+        "fieldFullProjection"           -> BsonInt32(1),
+        "fieldProjection.inner1.field1" -> BsonInt32(1),
+        "fieldProjection.inner2"        -> BsonInt32(1),
+      )
+    )
+  }
 }

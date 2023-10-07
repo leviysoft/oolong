@@ -42,4 +42,6 @@ case object MongoQueryNode {
   case class TypeCheck(bsonType: Constant[Int]) extends MQ
 
   case class Mod(divisor: MQ, remainder: MQ) extends MQ
+
+  case class ElemMatch(fields: MQ) extends MQ
 }

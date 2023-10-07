@@ -5,7 +5,6 @@ import scala.annotation.tailrec
 import scala.language.postfixOps
 import scala.quoted.*
 
-import oolong.AstParser
 import oolong.UExpr.FieldUpdateExpr
 import oolong.Utils.*
 import oolong.dsl.*
@@ -62,6 +61,9 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
       case '{ ($x: Seq[_]).length == ($y: Int) } =>
         QExpr.Size(parse(x), parse(y))
+
+      case '{ type t; ($x: Seq[`t`]).exists($y: (`t` => Boolean)) } => // not text & where
+        QExpr.ElemMatch(parse(x), parseQExpr(y))
 
       case AsTerm(Apply(Select(lhs, "<="), List(rhs))) =>
         QExpr.Lte(parse(lhs.asExpr), parse(rhs.asExpr))

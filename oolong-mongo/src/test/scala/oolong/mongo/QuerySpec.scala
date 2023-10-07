@@ -925,6 +925,112 @@ class QuerySpec extends AnyFunSuite {
 
   }
 
+  test("$elemMatch for array containing objects") {
+    case class Inner(a: Int, b: String)
+    case class Test(array: Vector[Inner])
+
+    val q    = query[Test](_.array.exists(s => s.a > 2 && s.b == "123"))
+    val repr = renderQuery[Test](_.array.exists(s => s.a > 2 && s.b == "123"))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "array" -> BsonDocument(
+          "$elemMatch" -> BsonDocument(
+            "a" -> BsonDocument("$gt" -> BsonInt32(2)),
+            "b" -> BsonString("123")
+          )
+        )
+      )
+    )
+  }
+
+  test("$elemMatch for array primitives") {
+    case class Test(array: Vector[Int])
+
+    val q    = query[Test](_.array.exists(s => s > 2 && s <= 100))
+    val repr = renderQuery[Test](_.array.exists(s => s > 2 && s <= 100))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "array" -> BsonDocument(
+          "$elemMatch" -> BsonDocument(
+            "$gt"  -> BsonInt32(2),
+            "$lte" -> BsonInt32(100)
+          )
+        )
+      )
+    )
+  }
+
+  test("$elemMatch for array with $and with same field twice") {
+    case class Inner(a: Int, b: String)
+    case class Test(array: Vector[Inner])
+
+    val q    = query[Test](_.array.exists(s => s.a > 2 && s.a < 100 && s.b == "123"))
+    val repr = renderQuery[Test](_.array.exists(s => s.a > 2 && s.a < 100 && s.b == "123"))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "array" -> BsonDocument(
+          "$elemMatch" -> BsonDocument(
+            "$and" -> BsonArray.fromIterable(
+              List(
+                BsonDocument("a" -> BsonDocument("$gt" -> BsonInt32(2))),
+                BsonDocument("a" -> BsonDocument("$lt" -> BsonInt32(100))),
+                BsonDocument("b" -> BsonString("123")),
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("$elemMatch querying the same field twice") {
+    case class Test(array: Vector[Int])
+
+    val q    = query[Test](_.array.exists(s => s == 100))
+    val repr = renderQuery[Test](_.array.exists(s => s == 100))
+
+    test(
+      q,
+      repr,
+      BsonDocument("array" -> BsonInt32(100))
+    )
+  }
+
+  test("nested $elemMatch") {
+    case class Inner(array1: Vector[Int])
+    case class Base(array0: Vector[Inner])
+
+    val q    = query[Base](_.array0.exists(_.array1.exists(_ > 100)))
+    val repr = renderQuery[Base](_.array0.exists(_.array1.exists(_ > 100)))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "array0" ->
+          BsonDocument(
+            "$elemMatch" ->
+              BsonDocument(
+                "array1" ->
+                  BsonDocument(
+                    "$elemMatch" ->
+                      BsonDocument("$gt" -> BsonInt32(100))
+                  )
+              )
+          )
+      )
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

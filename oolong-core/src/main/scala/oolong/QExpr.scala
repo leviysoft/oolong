@@ -51,4 +51,6 @@ private[oolong] object QExpr {
   case class TypeCheck[T](x: QExpr, typeInfo: TypeInfo[T]) extends QExpr
 
   case class Mod(x: QExpr, divisor: QExpr, remainder: QExpr) extends QExpr
+
+  case class ElemMatch(x: QExpr, y: QExpr) extends QExpr
 }

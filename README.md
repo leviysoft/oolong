@@ -194,6 +194,8 @@ val q3 = query[Person](p => Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4
 
 V Array Query Operators
 
+1. $size
+
 ```scala
 import oolong.dsl.*
 
@@ -202,6 +204,21 @@ case class Course(studentNames: List[String])
 val q = query[Course](_.studentNames.size == 20)
 val q = query[Course](_.studentNames.length == 20)
 // q is {"studentNames": {"$size": 20}}
+```
+
+2. $elemMatch
+
+```scala
+import oolong.dsl.*
+
+case class Course(studentNames: List[String], tutor: String)
+
+val q = query[Course](_.studentNames.exists(_ == 20)) // $elemMatch ommited when querying single field
+// q is {"studentNames": 20}
+
+val q = query[Course](course => course.studentNames.exists(_ > 20) && course.tutor == "Pavlov")
+// q is {"studentNames": {"$elemMatch": {"studentNames": {"$gt": 20}, "tutor": "Pavlov"}}}
+
 ```
 
 #### Update operators

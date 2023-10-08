@@ -24,5 +24,5 @@ private[oolong] trait Backend[Ast, OptimizableRepr, TargetRepr] {
   /**
    * Perform optimizations that are specific to this backend.
    */
-  def optimize(query: OptimizableRepr): OptimizableRepr = query
+  def optimize(query: OptimizableRepr)(using quotes: Quotes): OptimizableRepr = query
 }

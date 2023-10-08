@@ -992,16 +992,16 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
-  test("$elemMatch querying the same field twice") {
+  test("$elemMatch querying a single field") {
     case class Test(array: Vector[Int])
 
-    val q    = query[Test](_.array.exists(s => s == 100))
-    val repr = renderQuery[Test](_.array.exists(s => s == 100))
+    val q    = query[Test](_.array.exists(s => s < 100))
+    val repr = renderQuery[Test](_.array.exists(s => s < 100))
 
     test(
       q,
       repr,
-      BsonDocument("array" -> BsonInt32(100))
+      BsonDocument("array" -> BsonDocument("$lt" -> BsonInt32(100)))
     )
   }
 
@@ -1016,17 +1016,7 @@ class QuerySpec extends AnyFunSuite {
       q,
       repr,
       BsonDocument(
-        "array0" ->
-          BsonDocument(
-            "$elemMatch" ->
-              BsonDocument(
-                "array1" ->
-                  BsonDocument(
-                    "$elemMatch" ->
-                      BsonDocument("$gt" -> BsonInt32(100))
-                  )
-              )
-          )
+        "array0.array1" -> BsonDocument("$gt" -> BsonInt32(100))
       )
     )
   }

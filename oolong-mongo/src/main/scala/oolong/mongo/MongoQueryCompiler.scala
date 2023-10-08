@@ -342,9 +342,18 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     matcher.matches()
     matcher.group(3) -> options
 
-  override def optimize(query: MQ): MQ =
-    val opt: PartialFunction[MQ, MQ] = { case MQ.OnField(field, MQ.ElemMatch(MQ.OnField(MQ.Field(""), eq: MQ.Eq))) =>
-      MQ.OnField(field, eq) // flatten $elemMatch for array with primitives
+  override def optimize(query: MQ)(using quotes: Quotes): MQ =
+    val opt: PartialFunction[MQ, MQ] = { case q @ MQ.OnField(_, _: MQ.ElemMatch) =>
+      optimizeElemMatch(q)
+
     }
     opt.lift(query).getOrElse(query)
+
+  private def optimizeElemMatch(elemMatch: MQ.OnField)(using quotes: Quotes): MQ =
+    import quotes.reflect.*
+    elemMatch match
+      case q @ MQ.OnField(_, MQ.ElemMatch(_: MQ.And | _: MQ.Or)) => q
+      case MQ.OnField(first, MQ.ElemMatch(MQ.OnField(second, expr))) =>
+        optimize(MQ.OnField(MQ.Field(Vector(first.path, second.path).filter(_.nonEmpty).mkString(".")), expr)) // flatten $elemMatch for querying one field
+      case _ => report.errorAndAbort(s"Not a ElemMatch: ${elemMatch}")
 }

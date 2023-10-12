@@ -69,13 +69,18 @@ private[oolong] def queryImpl[Doc: Type](input: Expr[Doc => Boolean])(using quot
   target(optimized)
 }
 
-private[oolong] def projectionImpl[Doc: Type, Projection: Type](using quotes: Quotes): Expr[BsonDocument] =
-  import quotes.reflect.*
+private[oolong] def buildProjectionAst[Doc: Type, Projection: Type](using quotes: Quotes) =
   import MongoQueryCompiler.*
 
   val parser = new DefaultAstParser
   val ast    = parser.parseProjectionQExpr[Doc, Projection]
-  val repr   = opt[Doc](ast)
+  ast -> opt[Doc](ast)
+
+private[oolong] def projectionImpl[Doc: Type, Projection: Type](using quotes: Quotes): Expr[BsonDocument] =
+  import quotes.reflect.*
+  import MongoQueryCompiler.*
+
+  val (ast, repr) = buildProjectionAst[Doc, Projection]
 
   report.info("Optimized AST:\n" + pprint(ast) + "\nGenerated Mongo query:\n" + render(repr))
 

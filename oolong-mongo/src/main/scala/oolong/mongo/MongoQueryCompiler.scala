@@ -181,7 +181,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Mod(divisor, remainder) => "{ \"$mod\": [" + rec(divisor) + "," + rec(remainder) + "] }"
         case MQ.ElemMatch(expr) =>
           "{ \"$elemMatch\": { " + rec(expr) + " } }"
-        case MQ.Projection(fields) => s"""{ ${fields.map(f => s"\"$f\": 1").mkString(", ")} }"""
+        case MQ.Projection(fields) =>
+          s"""${fields.map(f => s"\"$f\": 1").mkString(", ")}"""
         case MQ.Field(field) =>
           report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
     end rec

@@ -1,12 +1,16 @@
 package oolong.mongo
 
 import java.time.Instant
+import java.time.LocalDate
+import scala.annotation.nowarn
 
 import oolong.bson.meta.QueryMeta
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.bson.BsonInt32
+import org.scalatest.Assertion
 import org.scalatest.funsuite.AnyFunSuite
 
+@nowarn("msg=unused local definition")
 class ProjectionSpec extends AnyFunSuite {
 
   case class Inner(fieldToKeep: Int, b: BigDecimal)
@@ -28,9 +32,12 @@ class ProjectionSpec extends AnyFunSuite {
 
   test("projection") {
     val proj = projection[BaseClass, ProjectionClass]
+    val repr = renderProjection[BaseClass, ProjectionClass]
 
-    assert(
-      proj == BsonDocument(
+    test(
+      proj,
+      repr,
+      BsonDocument(
         "stringField1"                -> BsonInt32(1),
         "timeField"                   -> BsonInt32(1),
         "innerClassField.fieldToKeep" -> BsonInt32(1)
@@ -40,12 +47,15 @@ class ProjectionSpec extends AnyFunSuite {
 
   test("projection with BaseClass QueryMeta") {
     val proj = projection[BaseClass, ProjectionClass]
+    val repr = renderProjection[BaseClass, ProjectionClass]
 
     inline given QueryMeta[Inner] = QueryMeta.snakeCase
     inline given QueryMeta[BaseClass] = QueryMeta.snakeCase
 
-    assert(
-      proj == BsonDocument(
+    test(
+      proj,
+      repr,
+      BsonDocument(
         "string_field1"                   -> BsonInt32(1),
         "time_field"                      -> BsonInt32(1),
         "inner_class_field.field_to_keep" -> BsonInt32(1)
@@ -86,9 +96,12 @@ class ProjectionSpec extends AnyFunSuite {
     case class InnerNotFullProjection(inner1: Inner1NotFullProjection, inner2: Inner2Projection)
 
     val proj = projection[Base, Projection]
+    val repr = renderProjection[Base, Projection]
 
-    assert(
-      proj == BsonDocument(
+    test(
+      proj,
+      repr,
+      BsonDocument(
         "fieldTheSame"                  -> BsonInt32(1),
         "fieldFullProjection"           -> BsonInt32(1),
         "fieldProjection.inner1.field1" -> BsonInt32(1),
@@ -96,4 +109,36 @@ class ProjectionSpec extends AnyFunSuite {
       )
     )
   }
+
+  test("Full projection returns empty document") {
+    case class Passport(number: String, issueDate: LocalDate)
+
+    case class BirthInfo(country: String, date: LocalDate)
+
+    case class Student(name: String, lastName: String, passport: Passport, birthInfo: BirthInfo)
+
+    case class StudentDTO(name: String, lastName: String, passport: PassportDTO, birthInfo: BirthInfoDTO)
+
+    case class PassportDTO(number: String, issueDate: LocalDate)
+
+    case class BirthInfoDTO(country: String, date: LocalDate)
+
+    val proj = projection[Student, StudentDTO]
+    val repr = renderProjection[Student, StudentDTO]
+
+    test(
+      proj,
+      repr,
+      BsonDocument()
+    )
+
+  }
+
+  private inline def test(
+      query: BsonDocument,
+      repr: String,
+      toCompare: BsonDocument,
+  ): Assertion =
+    assert(query.toJson.replaceAll("\\s+", "") == repr.replaceAll("\\s+", ""))
+    assert(query == toCompare)
 }

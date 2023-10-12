@@ -285,6 +285,21 @@ $unset can be used only to set None on Option fields
 val q = update[Observation](_.unset(_.threshold))
 // q is {"$unset": {"threshold": ""}}
 ```
+#### Projection
+
+```scala 3
+case class Passport(number: String, issueDate: LocalDate)
+case class BirthInfo(country: String, date: LocalDate)
+case class Student(name: String, lastName: String, passport: Passport, birthInfo: BirthInfo)
+
+case class StudentDTO(name: String, lastName: String)
+case class PassportDTO(number: String, issueDate: LocalDate)
+case class BirthDateDTO(country: String, date: LocalDate)
+
+val proj = projection[Student, StudentDTO]
+// proj is {"name": 1, "birthInfo.date": 1, "passport": 1, "lastName": 1}
+```
+
 
 ### QueryMeta
 

@@ -31,7 +31,9 @@ private[oolong] def updateImpl[Doc: Type](
 
   val (ast, optimized) = buildUpdateAst(input)
 
-  report.info("AST:\n" + pprint(ast) + "\nGenerated Mongo query:\n" + render(optimized))
+  report.info(
+    ("AST:\n" + pprint(ast) + "\n").filter(_ => Envs.printAst) + "Generated Mongo query:\n" + render(optimized)
+  )
 
   target(optimized)
 }
@@ -64,7 +66,11 @@ private[oolong] def queryImpl[Doc: Type](input: Expr[Doc => Boolean])(using quot
 
   val (optimizedAst, optimized) = buildQueryAst(input)
 
-  report.info("Optimized AST:\n" + pprint(optimizedAst) + "\nGenerated Mongo query:\n" + render(optimized))
+  report.info(
+    ("Optimized AST:\n" + pprint(optimizedAst) + "\n").filter(_ => Envs.printAst) + "Generated Mongo query:\n" + render(
+      optimized
+    )
+  )
 
   target(optimized)
 }
@@ -82,6 +88,8 @@ private[oolong] def projectionImpl[Doc: Type, Projection: Type](using quotes: Qu
 
   val (ast, repr) = buildProjectionAst[Doc, Projection]
 
-  report.info("Optimized AST:\n" + pprint(ast) + "\nGenerated Mongo query:\n" + render(repr))
+  report.info(
+    ("Optimized AST:\n" + pprint(ast) + "\n").filter(_ => Envs.printAst) + "Generated Mongo query:\n" + render(repr)
+  )
 
   target(repr)

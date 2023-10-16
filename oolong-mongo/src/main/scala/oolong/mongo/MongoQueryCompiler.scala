@@ -57,6 +57,11 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case QExpr.Regex(x, pattern)       => MQ.OnField(getField(x)(renames), MQ.Regex(pattern))
         case QExpr.ScalaCode(code)         => MQ.ScalaCode(code)
         case QExpr.ScalaCodeIterable(iter) => MQ.ScalaCodeIterable(iter)
+        case QExpr.Collection(iter) =>
+          val res = iter match
+            case q: QExpr                          => rec(q, renames)
+            case other: Iterable[QExpr @unchecked] => other.map(rec(_, renames)).toList
+          MQ.Collection(res)
         case QExpr.TypeCheck(x, y) =>
           import y.quotedType
           val tpe                = TypeRepr.of[y.Type]
@@ -172,10 +177,15 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
           if ((fields.distinct.size < fields.size) && fields.nonEmpty)
             "\"$and\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
           else exprs.map(rec).mkString(", ")
-        case MQ.Or(exprs)               => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
-        case MQ.Exists(x)               => "{ \"$exists\": " + rec(x) + " }"
-        case MQ.Constant(s: String)     => "\"" + s + "\""
-        case MQ.Constant(s: Any)        => s.toString // also limit
+        case MQ.Or(exprs)           => "\"$or\": [ " + exprs.map(rec).map("{ " + _ + " }").mkString(", ") + " ]"
+        case MQ.Exists(x)           => "{ \"$exists\": " + rec(x) + " }"
+        case MQ.Constant(s: String) => "\"" + s + "\""
+        case MQ.Constant(s: Any)    => s.toString // also limit
+        case MQ.Collection(iterable) =>
+          iterable match
+            case s: MQ                      => s"[ ${rec(s)} ]"
+            case s: Iterable[MQ @unchecked] => s"[ ${s.map(rec).mkString(",")} ]"
+
         case MQ.ScalaCode(code)         => renderCode(code)
         case MQ.ScalaCodeIterable(_)    => "?"
         case MQ.Subquery(_)             => "{...}"
@@ -217,7 +227,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
   private def parseOperators(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonValue] =
     parseEq.lift(optRepr).getOrElse(parseOperatorsAsBsonDocument(optRepr))
   private def parseEq(using quotes: Quotes): PartialFunction[MQ, Expr[BsonValue]] =
-    case MQ.Eq(x) => handleValues(x)
+    case MQ.Eq(x)            => handleValues(x)
+    case MQ.Collection(iter) => handleArrayCond(iter)
   private def parseOperatorsAsBsonDocument(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonDocument] =
     import quotes.reflect.*
     optRepr match

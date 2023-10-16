@@ -1086,6 +1086,29 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("$all with nested array") {
+    case class LottoTicket(numbers: Vector[Vector[Int]])
+
+    inline def firstColumn  = Vector(1, 7, 9)
+    inline def secondColumn = Vector(11, 17, 18)
+
+    val q    = query[LottoTicket](lt => Vector(firstColumn, secondColumn).forall(lt.numbers.contains))
+    val repr = renderQuery[LottoTicket](lt => Vector(firstColumn, secondColumn).forall(lt.numbers.contains))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "numbers" -> BsonDocument(
+          "$all" -> BsonArray(
+            BsonArray(BsonInt32(1), BsonInt32(7), BsonInt32(9)),
+            BsonArray(BsonInt32(11), BsonInt32(17), BsonInt32(18)),
+          )
+        )
+      )
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

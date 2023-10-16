@@ -35,6 +35,8 @@ private[oolong] object QExpr {
 
   case class ScalaCode(code: Expr[Any]) extends QExpr
 
+  case class Collection(s: Iterable[QExpr] | QExpr) extends QExpr
+
   case class ScalaCodeIterable(code: Expr[Iterable[Any]]) extends QExpr
 
   case class Subquery(code: Expr[Any]) extends QExpr

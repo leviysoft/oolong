@@ -41,22 +41,24 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
     def parseIterable[T: Type](expr: Expr[Seq[T] | Set[T]]): List[QExpr] | QExpr =
       expr match {
+        // AsIterable can ignore lift e.g. in following case: lift(List(List(Random.nextInt()))
+        case '{ type t; lift($x: Seq[`t`] | Set[`t`]) } => QExpr.ScalaCodeIterable(x)
         case AsIterable(elems) =>
           elems.map {
-            case '{ $t: Boolean }         => constOrAbort(t)
-            case '{ $t: Long }            => constOrAbort(t)
-            case '{ $t: Int }             => constOrAbort(t)
-            case '{ $t: Short }           => constOrAbort(t)
-            case '{ $t: Byte }            => constOrAbort(t)
-            case '{ $t: Double }          => constOrAbort(t)
-            case '{ $t: Float }           => constOrAbort(t)
-            case '{ $t: String }          => constOrAbort(t)
-            case '{ $t: Char }            => constOrAbort(t)
-            case '{ lift($x: t) }         => QExpr.ScalaCode(x)
-            case '{ $x: Seq[?] | Set[?] } => QExpr.ScalaCode(x) // what to do with nested arrays?
-            case x                        => QExpr.ScalaCode(x) // are we sure we need this this case?
+            case '{ $t: Boolean } => constOrAbort(t)
+            case '{ $t: Long }    => constOrAbort(t)
+            case '{ $t: Int }     => constOrAbort(t)
+            case '{ $t: Short }   => constOrAbort(t)
+            case '{ $t: Byte }    => constOrAbort(t)
+            case '{ $t: Double }  => constOrAbort(t)
+            case '{ $t: Float }   => constOrAbort(t)
+            case '{ $t: String }  => constOrAbort(t)
+            case '{ $t: Char }    => constOrAbort(t)
+            case '{ lift($x: t) } => QExpr.ScalaCode(x)
+            case '{ type t; $x: Seq[`t`] | Set[`t`] } =>
+              QExpr.Collection(parseIterable(x))
+            case x => QExpr.ScalaCode(x) // are we sure we need this this case?
           }.toList
-        case '{ type t; lift($x: Seq[`t`] | Set[`t`]) } => QExpr.ScalaCodeIterable(x)
         case _ =>
           report.errorAndAbort("Unexpected expr while parsing AST: " + expr.asTerm.show(using Printer.TreeStructure))
       }

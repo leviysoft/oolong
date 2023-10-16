@@ -8,7 +8,6 @@ import scala.quoted.*
 import oolong.UExpr.FieldUpdateExpr
 import oolong.Utils.*
 import oolong.bson.utils.Projection
-import oolong.bson.utils.QueryPath
 import oolong.dsl.*
 
 private[oolong] trait AstParser {
@@ -44,17 +43,18 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       expr match {
         case AsIterable(elems) =>
           elems.map {
-            case '{ $t: Boolean } => constOrAbort(t)
-            case '{ $t: Long }    => constOrAbort(t)
-            case '{ $t: Int }     => constOrAbort(t)
-            case '{ $t: Short }   => constOrAbort(t)
-            case '{ $t: Byte }    => constOrAbort(t)
-            case '{ $t: Double }  => constOrAbort(t)
-            case '{ $t: Float }   => constOrAbort(t)
-            case '{ $t: String }  => constOrAbort(t)
-            case '{ $t: Char }    => constOrAbort(t)
-            case '{ lift($x: t) } => QExpr.ScalaCode(x)
-            case x                => QExpr.ScalaCode(x) // are we sure we need this this case?
+            case '{ $t: Boolean }         => constOrAbort(t)
+            case '{ $t: Long }            => constOrAbort(t)
+            case '{ $t: Int }             => constOrAbort(t)
+            case '{ $t: Short }           => constOrAbort(t)
+            case '{ $t: Byte }            => constOrAbort(t)
+            case '{ $t: Double }          => constOrAbort(t)
+            case '{ $t: Float }           => constOrAbort(t)
+            case '{ $t: String }          => constOrAbort(t)
+            case '{ $t: Char }            => constOrAbort(t)
+            case '{ lift($x: t) }         => QExpr.ScalaCode(x)
+            case '{ $x: Seq[?] | Set[?] } => QExpr.ScalaCode(x) // what to do with nested arrays?
+            case x                        => QExpr.ScalaCode(x) // are we sure we need this this case?
           }.toList
         case '{ type t; lift($x: Seq[`t`] | Set[`t`]) } => QExpr.ScalaCodeIterable(x)
         case _ =>
@@ -78,6 +78,9 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
       case '{ type t; ($x: Seq[`t`]).exists($y: (`t` => Boolean)) } => // not text & where
         QExpr.ElemMatch(parse(x), parseQExpr(y))
+
+      case '{ type t; ($y: Seq[`t`]).forall(s => ($x: Seq[`t`]).contains(s)) } =>
+        QExpr.All(parse(x), parseIterable(y))
 
       case AsTerm(Apply(Select(lhs, "<="), List(rhs))) =>
         QExpr.Lte(parse(lhs.asExpr), parse(rhs.asExpr))
@@ -192,7 +195,8 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }
 
-    parse(rhs.asExpr)
+    val res = parse(rhs.asExpr)
+    pprint.log(res)
   }
 
   override def parseUExpr[Doc: Type](input: Expr[Updater[Doc] => Updater[Doc]]): UExpr = {

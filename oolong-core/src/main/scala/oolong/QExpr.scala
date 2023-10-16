@@ -51,5 +51,7 @@ private[oolong] object QExpr {
 
   case class ElemMatch(x: QExpr, y: QExpr) extends QExpr
 
+  case class All(x: QExpr, y: List[QExpr] | QExpr) extends QExpr
+
   case class Projection(fields: Vector[String]) extends QExpr
 }

@@ -103,6 +103,8 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
             case or: MQ.Or     => MQ.ElemMatch(or)
             case _             => report.errorAndAbort(s"Wrong condition: ${cond}")
           MQ.OnField(getField(elemMatch.x)(renames), query)
+        case all: QExpr.All => MQ.OnField(getField(all.x)(renames), MQ.All(handleArrayConds(all.y)))
+
         case proj: QExpr.Projection => MQ.Projection(proj.fields.map(name => renames.getOrElse(name, name)))
       }
 
@@ -181,6 +183,7 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         case MQ.Mod(divisor, remainder) => "{ \"$mod\": [" + rec(divisor) + "," + rec(remainder) + "] }"
         case MQ.ElemMatch(expr) =>
           "{ \"$elemMatch\": { " + rec(expr) + " } }"
+        case MQ.All(exprs) => "{ \"$all\": [" + renderArrays(exprs) + "] }"
         case MQ.Projection(fields) =>
           s"""${fields.map(f => s"\"$f\": 1").mkString(", ")}"""
         case MQ.Field(field) =>
@@ -255,6 +258,10 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
         '{
           BsonDocument("$nin" -> ${ handleArrayCond(exprs) })
         }
+      case MQ.All(exprs) =>
+        '{
+          BsonDocument("$all" -> ${ handleArrayCond(exprs) })
+        }
       case MQ.Not(x) =>
         '{ BsonDocument("$not" -> ${ parseOperators(x) }) }
       case MQ.Exists(x) =>
@@ -277,11 +284,19 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     import q.reflect.*
     x match
       case list: List[MQ @unchecked] =>
-        '{
-          BsonArray.fromIterable(${
-            Expr.ofList(list.map(handleValues))
-          })
-        }
+        list.head match
+          case MQ.Constant(_) | _: MQ.ScalaCode =>
+            '{
+              BsonArray.fromIterable(${
+                Expr.ofList(list.map(handleValues))
+              })
+            }
+          case _ =>
+            '{
+              BsonArray.fromIterable(${
+                Expr.ofList(list.map(parseOperators))
+              })
+            }
       case MQ.ScalaCodeIterable(expr) =>
         expr match
           case '{ $l: Iterable[t] } =>
@@ -349,8 +364,17 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
     matcher.group(3) -> options
 
   override def optimize(query: MQ)(using quotes: Quotes): MQ =
-    val opt: PartialFunction[MQ, MQ] = { case q @ MQ.OnField(_, _: MQ.ElemMatch) =>
-      optimizeElemMatch(q)
+    val opt: PartialFunction[MQ, MQ] = {
+      case q @ MQ.OnField(_, _: MQ.ElemMatch) => optimizeElemMatch(q)
+      case MQ.And(MQ.OnField(field, el0: MQ.ElemMatch) :: others) if others.collect { // $and of $elemMatch to $all
+            case el @ MQ.OnField(`field`, _: MQ.ElemMatch) => el
+          }.size == others.size =>
+        MQ.OnField(
+          field,
+          MQ.All(
+            el0 :: others.collect { case MQ.OnField(_, el) => el }
+          )
+        )
 
     }
     opt.lift(query).getOrElse(query)

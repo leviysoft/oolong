@@ -46,5 +46,7 @@ case object MongoQueryNode {
 
   case class ElemMatch(x: MQ) extends MQ
 
+  case class All(x: List[MQ] | MQ) extends MQ
+
   case class Projection(fields: Vector[String]) extends MQ
 }

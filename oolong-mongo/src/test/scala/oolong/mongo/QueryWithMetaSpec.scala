@@ -475,7 +475,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
   }
 
   test("test $mod for int with lift(...)") {
-    val q = query[TestClass](_.intField.mod(lift(4), 5.2))
+    val q = query[TestClass](_.intField % lift(4) == 5.2)
 
     assert(
       q == BsonDocument(
@@ -492,7 +492,7 @@ class QueryWithMetaSpec extends AnyFunSuite {
   }
 
   test("test $mod for double with lift(...)") {
-    val q = query[TestClass](_.doubleField.mod(5.2, lift(123L)))
+    val q = query[TestClass](_.doubleField % 5.2 == lift(123L))
 
     assert(
       q == BsonDocument(

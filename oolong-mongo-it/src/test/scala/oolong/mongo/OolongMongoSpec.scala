@@ -161,7 +161,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
   }
 
   it should "compile queries with `.mod` #1" in {
-    val q = query[TestClass](_.field2.mod(4, 0))
+    val q = query[TestClass](_.field2 % 4 == 0)
 
     for {
       res <- collection.find(q).toFuture()
@@ -169,7 +169,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
   }
 
   it should "compile queries with `.mod` #2" in {
-    val q = query[TestClass](_.field2.mod(4.99, 0))
+    val q = query[TestClass](_.field2 % 4.99 == 0)
 
     for {
       res <- collection.find(q).toFuture()

@@ -131,7 +131,7 @@ val q = query[Person](_.age.isInstance[MongoType.INT32])
 10. $mod
 
 ```scala
-val q = query[Person](_.age.mod(4.5, 2))
+val q = query[Person](_.age % 4.5 == 2)
 // q is {"age": {"$mod": [4.5, 2]}}
 ```
 

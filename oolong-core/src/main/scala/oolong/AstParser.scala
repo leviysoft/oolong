@@ -84,6 +84,15 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case '{ type t; ($y: Seq[`t`]).forall(s => ($x: Seq[`t`]).contains(s)) } =>
         QExpr.All(parse(x), parseIterable(y))
 
+      case AsTerm(
+            Apply(
+              Select(Apply(Select(prop, "%"), List(divisor)), "=="),
+              List(remainder)
+            )
+          ) =>
+        checkNumericMod(prop, divisor, remainder)
+        QExpr.Mod(parse(prop.asExpr), parse(divisor.asExpr), parse(remainder.asExpr))
+
       case AsTerm(Apply(Select(lhs, "<="), List(rhs))) =>
         QExpr.Lte(parse(lhs.asExpr), parse(rhs.asExpr))
 
@@ -188,18 +197,32 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
           }
         )
 
-      case AsTerm(
-            Apply(Apply(TypeApply(Apply(TypeApply(Ident("mod"), _), List(prop)), _), List(divisor, remainder)), _)
-          ) =>
-        QExpr.Mod(parse(prop.asExpr), parse(divisor.asExpr), parse(remainder.asExpr))
-
       case _ =>
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }
 
-    val res = parse(rhs.asExpr)
-    pprint.log(res)
+    parse(rhs.asExpr)
   }
+
+  private val discrsOfMod = Vector("field", "divisor", "remainder")
+  private def checkNumericMod(field: Term, divisor: Term, remainder: Term): Unit =
+    def checkNumeric(term: Term, discr: String): Option[(TypeRepr, String)] =
+      term.tpe.widen.asType match
+        case '[t] if Expr.summon[Numeric[t]].isDefined => None
+        case '[t]                                      => Some(TypeRepr.of[t] -> discr)
+
+    val nonNumericFields: Vector[(TypeRepr, String)] =
+      Vector(field, divisor, remainder)
+        .lazyZip(discrsOfMod)
+        .flatMap(checkNumeric)
+    if nonNumericFields.nonEmpty then
+      report.errorAndAbort(
+        nonNumericFields
+          .map { case (typ, discr) =>
+            s"$discr of type ${typ.show} is not Numeric"
+          }
+          .mkString("\n")
+      )
 
   override def parseUExpr[Doc: Type](input: Expr[Updater[Doc] => Updater[Doc]]): UExpr = {
     val (paramName, rhs) = unwrapLambda(input.asTerm)

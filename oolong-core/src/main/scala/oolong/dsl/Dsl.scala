@@ -21,9 +21,6 @@ extension [A](a: Option[A])
    */
   def !! : A = useWithinMacro("!!")
 
-extension [A: Numeric](field: A)
-  def mod[D: Numeric, R: Numeric](divisor: D, remainder: R): Boolean = useWithinMacro("mod")
-
 sealed trait Updater[DocT] {
   def set[PropT, ValueT](selectProp: DocT => PropT, value: ValueT)(using
       PropT =:= ValueT

@@ -1139,6 +1139,20 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("BigDecimal is supported without lift") {
+    case class BDTest(field: BigDecimal)
+    val q    = query[BDTest](_.field == BigDecimal(4.2))
+    val repr = renderQuery[BDTest](_.field == BigDecimal(4.2))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "field" -> BsonDouble(4.2)
+      )
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

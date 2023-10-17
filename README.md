@@ -1,5 +1,7 @@
 # Oolong
 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.leviysoft/oolong-core_3/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.leviysoft/oolong-core_3)
+
 Oolong - compile-time query generation for document stores.
 
 This library is insipred by [Quill](https://github.com/zio/zio-protoquill).

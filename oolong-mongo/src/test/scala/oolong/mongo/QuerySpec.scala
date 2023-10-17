@@ -1019,6 +1019,96 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("$all") {
+    case class LotteryTicket(numbers: List[Int])
+
+    inline def winningNumbers = List(4, 8, 15, 16, 23, 42)
+
+    val q    = query[LotteryTicket](lt => winningNumbers.forall(lt.numbers.contains))
+    val repr = renderQuery[LotteryTicket](lt => winningNumbers.forall(lt.numbers.contains))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "numbers" -> BsonDocument(
+          "$all" -> BsonArray(
+            BsonInt32(4),
+            BsonInt32(8),
+            BsonInt32(15),
+            BsonInt32(16),
+            BsonInt32(23),
+            BsonInt32(42),
+          )
+        )
+      )
+    )
+  }
+
+  test("$all with $elemMatch") {
+    case class LotteryTicket(numbers: List[Int], series: Long)
+
+    case class LotteryTickets(tickets: Vector[LotteryTicket])
+
+    val q = query[LotteryTickets](lts =>
+      lts.tickets.exists(_.numbers.size == 20) && lts.tickets.exists(ticket =>
+        ticket.numbers.size == 10 && ticket.series == 99L
+      )
+    )
+    val repr = renderQuery[LotteryTickets](lts =>
+      lts.tickets.exists(_.numbers.size == 20) && lts.tickets.exists(ticket =>
+        ticket.numbers.size == 10 && ticket.series == 99L
+      )
+    )
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "tickets" -> BsonDocument(
+          "$all" -> BsonArray(
+            BsonDocument(
+              "$elemMatch" ->
+                BsonDocument(
+                  "numbers" -> BsonDocument("$size" -> BsonInt32(20)),
+                )
+            ),
+            BsonDocument(
+              "$elemMatch" ->
+                BsonDocument(
+                  "numbers" -> BsonDocument("$size" -> BsonInt32(10)),
+                  "series"  -> BsonInt64(99)
+                )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("$all with nested array") {
+    case class LottoTicket(numbers: Vector[Vector[Int]])
+
+    inline def firstColumn  = Vector(1, 7, 9)
+    inline def secondColumn = Vector(11, 17, 18)
+
+    val q    = query[LottoTicket](lt => Vector(firstColumn, secondColumn).forall(lt.numbers.contains))
+    val repr = renderQuery[LottoTicket](lt => Vector(firstColumn, secondColumn).forall(lt.numbers.contains))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "numbers" -> BsonDocument(
+          "$all" -> BsonArray(
+            BsonArray(BsonInt32(1), BsonInt32(7), BsonInt32(9)),
+            BsonArray(BsonInt32(11), BsonInt32(17), BsonInt32(18)),
+          )
+        )
+      )
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

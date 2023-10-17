@@ -30,6 +30,7 @@ case object MongoQueryNode {
   case class And(exprs: List[MQ]) extends MQ
   case class Or(exprs: List[MQ]) extends MQ
   case class Constant[T](s: T) extends MQ
+  case class Collection(iterable: List[MQ] | MQ) extends MQ // can be nested of x levels
   case class ScalaCode(code: Expr[Any]) extends MQ
   case class ScalaCodeIterable(code: Expr[Iterable[Any]]) extends MQ
   case class Subquery(code: Expr[BsonDocument]) extends MQ
@@ -45,6 +46,8 @@ case object MongoQueryNode {
   case class Mod(divisor: MQ, remainder: MQ) extends MQ
 
   case class ElemMatch(x: MQ) extends MQ
+
+  case class All(x: List[MQ] | MQ) extends MQ
 
   case class Projection(fields: Vector[String]) extends MQ
 }

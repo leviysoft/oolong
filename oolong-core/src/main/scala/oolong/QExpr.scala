@@ -35,6 +35,8 @@ private[oolong] object QExpr {
 
   case class ScalaCode(code: Expr[Any]) extends QExpr
 
+  case class Collection(s: Iterable[QExpr] | QExpr) extends QExpr
+
   case class ScalaCodeIterable(code: Expr[Iterable[Any]]) extends QExpr
 
   case class Subquery(code: Expr[Any]) extends QExpr
@@ -50,6 +52,8 @@ private[oolong] object QExpr {
   case class Mod(x: QExpr, divisor: QExpr, remainder: QExpr) extends QExpr
 
   case class ElemMatch(x: QExpr, y: QExpr) extends QExpr
+
+  case class All(x: QExpr, y: List[QExpr] | QExpr) extends QExpr
 
   case class Projection(fields: Vector[String]) extends QExpr
 }

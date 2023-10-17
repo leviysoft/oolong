@@ -8,7 +8,6 @@ import scala.quoted.*
 import oolong.UExpr.FieldUpdateExpr
 import oolong.Utils.*
 import oolong.bson.utils.Projection
-import oolong.bson.utils.QueryPath
 import oolong.dsl.*
 
 private[oolong] trait AstParser {
@@ -42,6 +41,8 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
     def parseIterable[T: Type](expr: Expr[Seq[T] | Set[T]]): List[QExpr] | QExpr =
       expr match {
+        // AsIterable can ignore lift e.g. in following case: lift(List(List(Random.nextInt()))
+        case '{ type t; lift($x: Seq[`t`] | Set[`t`]) } => QExpr.ScalaCodeIterable(x)
         case AsIterable(elems) =>
           elems.map {
             case '{ $t: Boolean } => constOrAbort(t)
@@ -54,9 +55,10 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
             case '{ $t: String }  => constOrAbort(t)
             case '{ $t: Char }    => constOrAbort(t)
             case '{ lift($x: t) } => QExpr.ScalaCode(x)
-            case x                => QExpr.ScalaCode(x) // are we sure we need this this case?
+            case '{ type t; $x: Seq[`t`] | Set[`t`] } =>
+              QExpr.Collection(parseIterable(x))
+            case x => QExpr.ScalaCode(x) // are we sure we need this this case?
           }.toList
-        case '{ type t; lift($x: Seq[`t`] | Set[`t`]) } => QExpr.ScalaCodeIterable(x)
         case _ =>
           report.errorAndAbort("Unexpected expr while parsing AST: " + expr.asTerm.show(using Printer.TreeStructure))
       }
@@ -78,6 +80,9 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
       case '{ type t; ($x: Seq[`t`]).exists($y: (`t` => Boolean)) } => // not text & where
         QExpr.ElemMatch(parse(x), parseQExpr(y))
+
+      case '{ type t; ($y: Seq[`t`]).forall(s => ($x: Seq[`t`]).contains(s)) } =>
+        QExpr.All(parse(x), parseIterable(y))
 
       case AsTerm(Apply(Select(lhs, "<="), List(rhs))) =>
         QExpr.Lte(parse(lhs.asExpr), parse(rhs.asExpr))
@@ -192,7 +197,8 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         report.errorAndAbort("Unexpected expr while parsing AST: " + input.show + s"; term: ${showTerm(input.asTerm)}")
     }
 
-    parse(rhs.asExpr)
+    val res = parse(rhs.asExpr)
+    pprint.log(res)
   }
 
   override def parseUExpr[Doc: Type](input: Expr[Updater[Doc] => Updater[Doc]]): UExpr = {

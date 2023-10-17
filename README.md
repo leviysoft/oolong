@@ -223,6 +223,31 @@ val q = query[Course](course => course.studentNames.exists(_ > 20) && course.tut
 
 ```
 
+3. $all
+
+```scala
+case class LotteryTicket(numbers: List[Int])
+
+inline def winningNumbers = List(4, 8, 15, 16, 23, 42)
+
+val q    = query[LotteryTicket](lt => winningNumbers.forall(lt.numbers.contains))
+// q is { "numbers": { "$all": [4, 8, 15, 16, 23, 42] } }
+```
+
+$all with $elemMatch
+```scala
+case class LotteryTicket(numbers: List[Int], series: Long)
+
+case class LotteryTickets(tickets: Vector[LotteryTicket])
+
+val q = query[LotteryTickets](lts =>
+  lts.tickets.exists(_.numbers.size == 20) && lts.tickets.exists(ticket =>
+    ticket.numbers.size == 10 && ticket.series == 99L
+  )
+)
+// q is { "tickets": { "$all": [{ "$elemMatch": { "numbers": { "$size": 20 } } }, { "$elemMatch": { "numbers": { "$size": 10 }, "series": 99 } }] } }
+```
+
 #### Update operators
 
 I Field Update Operators

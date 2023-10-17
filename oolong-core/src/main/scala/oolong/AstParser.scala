@@ -93,6 +93,18 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         checkNumericMod(prop, divisor, remainder)
         QExpr.Mod(parse(prop.asExpr), parse(divisor.asExpr), parse(remainder.asExpr))
 
+      case AsTerm(
+            Apply(
+              Select(
+                Apply(Apply(Select(_, "%"), List(prop)), List(divisor)),
+                "=="
+              ),
+              List(remainder)
+            )
+          ) =>
+        checkNumericMod(prop, divisor, remainder)
+        QExpr.Mod(parse(prop.asExpr), parse(divisor.asExpr), parse(remainder.asExpr))
+
       case AsTerm(Apply(Select(lhs, "<="), List(rhs))) =>
         QExpr.Lte(parse(lhs.asExpr), parse(rhs.asExpr))
 

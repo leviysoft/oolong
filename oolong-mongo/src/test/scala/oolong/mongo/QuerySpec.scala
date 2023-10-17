@@ -923,6 +923,36 @@ class QuerySpec extends AnyFunSuite {
 
   }
 
+  test("$mod for % in extension") {
+    trait NewType[T](using ev: Numeric[T]):
+      opaque type Type = T
+      given Numeric[Type] = ev
+      extension (nt: Type) def value: T = nt
+
+    object Number extends NewType[Int]:
+      extension (self: Number) def %(a: Int): Int = self.value % a
+    type Number = Number.Type
+
+    case class Test(field: Number)
+    val q    = query[Test](_.field % 2 == 2)
+    val repr = renderQuery[Test](_.field % 2 == 2)
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "field" -> BsonDocument(
+          "$mod" -> BsonArray.fromIterable(
+            List(
+              BsonInt32(2),
+              BsonInt32(2)
+            )
+          )
+        )
+      )
+    )
+  }
+
   test("$elemMatch for array containing objects") {
     case class Inner(a: Int, b: String)
     case class Test(array: Vector[Inner])

@@ -135,6 +135,23 @@ val q = query[Person](_.age % 4.5 == 2)
 // q is {"age": {"$mod": [4.5, 2]}}
 ```
 
+Also `$mod` is supported if `%` is defined in extension:
+
+```scala 3
+trait NewType[T](using ev: Numeric[T]):
+  opaque type Type = T
+  given Numeric[Type] = ev
+  extension (nt: Type) def value: T = nt
+
+object Number extends NewType[Int]:
+  extension (self: Number) def %(a: Int): Int = self.value % a
+type Number = Number.Type
+
+case class Human(age: Number)
+val q    = query[Human](_.age % 2 == 2)
+// q is {"age": {"$mod": [2, 2]}}
+```
+
 II Logical query operators
 
 1. $and
@@ -188,7 +205,7 @@ val q = query[Person](_.email.!!.matches("(?ix)^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2
 //q is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"} 
 val q1 = query[Person](p => Pattern.compile("(?ix)^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$").matcher(p.email.!!).matches())
 //q1 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"}
-val q2 = query[Person](p => Pattern.compile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", Pattern.CASE_INSENSITIVE | Pattern.COMMENTS).matcher(p.email.!!).matches()
+val q2 = query[Person](p => Pattern.compile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", Pattern.CASE_INSENSITIVE | Pattern.COMMENTS).matcher(p.email.!!).matches())
 //q2 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$", "$options": "ix"}
 val q3 = query[Person](p => Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", p.email.!!))
 //q3 is {"email": {"$regex": "^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$"}
@@ -332,7 +349,7 @@ val proj = projection[Student, StudentDTO]
 
 In order to rename fields in codecs and queries for type T the instance of QueryMeta[T] should be provided in the scope:
 
-```scala
+```scala 3
 
 import org.mongodb.scala.BsonDocument
 
@@ -382,7 +399,7 @@ QueryMeta.camelCase
 QueryMeta.upperCamelCase
 
 Also they can be combined with manual fields renaming:
-```scala
+```scala 3
 
 import oolong.bson.BsonDecoder
 import oolong.bson.BsonEncoder

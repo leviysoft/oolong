@@ -171,7 +171,7 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case '{ !($x: Boolean) } =>
         QExpr.Not(parse(x))
 
-      case AsTerm(Apply(Select(Ident("BigDecimal"), _), List(literal: Literal))) =>
+      case AsTerm(Apply(Select(Ident("BigDecimal" | "BigInt"), _), List(literal: Literal))) =>
         parse(literal.asExpr)
 
       case AsTerm(Literal(DoubleConstant(c))) =>

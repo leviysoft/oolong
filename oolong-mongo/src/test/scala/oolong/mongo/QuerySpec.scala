@@ -1153,6 +1153,20 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("BigInt is supported without lift") {
+    case class BITest(field: BigInt)
+    val q    = query[BITest](_.field == BigInt(2_000_000_000L))
+    val repr = renderQuery[BITest](_.field == BigInt(2_000_000_000L))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "field" -> BsonInt64(2_000_000_000L)
+      )
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

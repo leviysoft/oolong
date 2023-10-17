@@ -7,7 +7,6 @@ import sbt._
 object Settings {
   val common = Seq(
     organization := "io.github.leviysoft",
-    version := "0.2.1",
     scalaVersion := "3.3.1",
     scalacOptions ++= Seq(
       // For reference: https://docs.scala-lang.org/scala3/guides/migration/options-lookup.html

@@ -1,6 +1,6 @@
 # Oolong
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.leviysoft/oolong-core_3/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.leviysoft/oolong-core_3)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.leviysoft/oolong-core_3.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22io.github.leviysoft%22%20AND%20a:%22oolong-core_3%22)
 
 Oolong - compile-time query generation for document stores.
 

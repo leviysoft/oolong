@@ -37,5 +37,7 @@ jobs:
         # with:
         #   config-name: my-config.yml
         #   disable-autolabeler: true
+        with:
+          commitish: main #see https://github.com/release-drafter/release-drafter/issues/1125
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

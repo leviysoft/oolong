@@ -57,6 +57,18 @@ val `oolong-bson` = (project in file("oolong-bson"))
     Test / fork := true,
   )
 
+val `oolong-bson-refined` = (project in file("oolong-bson-refined"))
+  .settings(Settings.common)
+  .dependsOn(`oolong-bson`)
+  .settings(
+    libraryDependencies ++= Seq(
+      "eu.timepit" %% "refined" % "0.11.0",
+      "org.scalatest" %% "scalatest" % "3.2.15" % Test,
+      "com.ironcorelabs" %% "cats-scalatest" % "4.0.0" % Test
+    ),
+    Test / fork := true,
+  )
+
 val `oolong-core` = (project in file("oolong-core"))
   .settings(Settings.common)
   .dependsOn(`oolong-bson`)
@@ -95,7 +107,7 @@ val `oolong-mongo-it` = (project in file("oolong-mongo-it"))
 
 val root = (project in file("."))
   .settings(Settings.common)
-  .aggregate(`oolong-bson`, `oolong-core`, `oolong-mongo`, `oolong-mongo-it`)
+  .aggregate(`oolong-bson`, `oolong-bson-refined`, `oolong-core`, `oolong-mongo`, `oolong-mongo-it`)
   .settings(
     pullRemoteCache := {},
     pushRemoteCache := {},

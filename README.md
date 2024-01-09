@@ -365,7 +365,6 @@ case class Person(name: String, address: Option[Address]) derives BsonEncoder, B
 
 object Person:
   inline given QueryMeta[Person] = queryMeta(_.name -> "lastName")
-end Person
 
 case class Address(city: String) derives BsonEncoder, BsonDecoder
 
@@ -411,7 +410,6 @@ case class Student(firstName: String, lastName: String, previousUniversity: Stri
 
 object Student:
   inline given QueryMeta[Student] = QueryMeta.snakeCase.withRenaming(_.firstName -> "name")
-end Student
 
 val s = Student("Alexander", "Bloom", "MSU")
 val bson = s.bson

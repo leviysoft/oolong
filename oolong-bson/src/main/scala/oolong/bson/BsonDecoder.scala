@@ -125,7 +125,6 @@ object BsonDecoder {
         }
       }
     }
-  end toProduct
 
   def toSum[T: Type](mirror: Expr[Mirror.SumOf[T]], elemInstances: List[Expr[BsonDecoder[_]]])(using
       q: Quotes
@@ -180,5 +179,4 @@ object BsonDecoder {
       case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes } } =>
         val elemInstances = summonAllForSum[elementTypes]
         toSum[T](m, elemInstances)
-  end derivedImpl
 }

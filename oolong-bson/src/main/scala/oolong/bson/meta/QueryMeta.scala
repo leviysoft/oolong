@@ -12,8 +12,6 @@ extension [T](inline q: QueryMeta[T])
     withRenamingImpl('q, 'fields)
   }
 
-end extension
-
 object QueryMeta:
   given [T: Type]: FromExpr[QueryMeta[T]] = new FromExpr[QueryMeta[T]]:
     def unapply(expr: Expr[QueryMeta[T]])(using q: Quotes): Option[QueryMeta[T]] =
@@ -53,7 +51,6 @@ object QueryMeta:
   private def field2WordArray(name: String): Array[String] =
     val first = regexp1.matcher(name).replaceAll(replacement)
     regexp2.matcher(first).replaceAll(replacement).split("_")
-  end field2WordArray
 
   private def capitalize(word: String) =
     word.take(1).toUpperCase + word.tail
@@ -90,8 +87,6 @@ object QueryMeta:
     val childrenMeta    = extractFieldsMap(caseFieldsNames, caseFieldsTypes)
     val resultMap       = merge(caseSnakeMeta, childrenMeta).filter { case (key, value) => key != value }
     '{ QueryMeta.apply[T](${ Expr(resultMap) }) }
-
-end QueryMeta
 
 inline def queryMeta[T](inline fields: (T => (Any, String))*): QueryMeta[T] = ${ queryMetaImpl[T]('fields) }
 
@@ -138,7 +133,6 @@ private def withRenamingImpl[T: Type](meta: Expr[QueryMeta[T]], exprs: Expr[Seq[
   val resultMap = oldMeta.map ++ newMeta.map
 
   '{ QueryMeta.apply[T](${ Expr(resultMap) }) }
-end withRenamingImpl
 
 def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(using
     q: Quotes
@@ -180,7 +174,6 @@ def extractFieldsMap(fieldsNames: List[String], fieldsTypes: List[Type[?]])(usin
             case _ => None
     }
     .toMap
-end extractFieldsMap
 
 def summonChildMeta[T: Type](using q: Quotes): Map[String, String] =
   import q.reflect.*
@@ -191,8 +184,6 @@ def summonChildMeta[T: Type](using q: Quotes): Map[String, String] =
   val caseFieldsTypes: List[Type[?]] = typeSymbol.caseFields.map(s => typeRepr.memberType(s).asType)
   val childrenMeta                   = extractFieldsMap(caseFieldsNames, caseFieldsTypes)
   merge(identityMeta, childrenMeta)
-
-end summonChildMeta
 
 def merge(first: Map[String, String], children: Map[String, Map[String, String]]) =
   first.flatMap { case (first, second) =>

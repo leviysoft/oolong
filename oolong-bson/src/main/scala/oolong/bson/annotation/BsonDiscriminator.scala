@@ -29,5 +29,3 @@ object BsonDiscriminator:
 
     Expr.ofList(annotations.toSeq)
   }
-
-end BsonDiscriminator

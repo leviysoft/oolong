@@ -198,7 +198,6 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
           s"""${fields.map(f => s"\"$f\": 1").mkString(", ")}"""
         case MQ.Field(field) =>
           report.errorAndAbort(s"There is no filter condition on field ${field.mkString(".")}")
-    end rec
 
     def renderArrays(x: List[MQ] | MQ)(using Quotes): String = x match
       case list: List[MQ @unchecked] => list.map(rec).mkString(", ")
@@ -209,7 +208,6 @@ object MongoQueryCompiler extends Backend[QExpr, MQ, BsonDocument] {
       case _              => "?"
 
     "{ " + rec(node) + " }"
-  end render
 
   override def target(optRepr: MongoQueryNode)(using quotes: Quotes): Expr[BsonDocument] =
     import quotes.reflect.*

@@ -6,7 +6,6 @@ import scala.util.Try
 import magnolia1.*
 import oolong.bson.annotation.*
 import oolong.bson.meta.QueryMeta
-import org.bson.BsonInvalidOperationException
 import org.bson.BsonNull
 import org.mongodb.scala.bson.*
 
@@ -58,7 +57,7 @@ object BsonDecoder {
       Try(
         pf.applyOrElse[BsonValue, T](
           value,
-          bv => throw new BsonInvalidOperationException(s"Can't decode $bv")
+          bv => throw DeserializationError(s"Can't decode $bv")
         )
       )
 
@@ -104,7 +103,7 @@ object BsonDecoder {
               .partitionMap { case (instance, name) =>
                 for {
                   value <- Option(value.asDocument.getFieldOpt(${ Expr(map) }.getOrElse(name, name)).getOrElse(BsonNull()))
-                    .toRight(new RuntimeException(s"Not found value $name"))
+                    .toRight(DeserializationError(s"Not found value $name"))
                   defaults = magnolia1.Macro.defaultValue[T]
                   result <- instance.asInstanceOf[BsonDecoder[Any]].fromBson(value).toEither match {
                     case Left(exc) =>
@@ -142,14 +141,14 @@ object BsonDecoder {
           val result = for {
             descriminatorFromBsonValue <- Option(value.asDocument.get(discriminatorField))
               .map(_.asString)
-              .toRight(new RuntimeException(s"Not found discriminator field $discriminatorField"))
+              .toRight(DeserializationError(s"Not found discriminator field $discriminatorField"))
               .map(_.getValue)
             index <- ${ Expr(names) }
               .collectFirst {
                 case (className, id) if descriminatorFromBsonValue == modifyValue(className) => id
               }
               .toRight(
-                new RuntimeException(
+                DeserializationError(
                   s"$descriminatorFromBsonValue does not match any of ${${ Expr(names) }.map(v => modifyValue(v._1)).mkString("[", ", ", "]")}"
                 )
               )

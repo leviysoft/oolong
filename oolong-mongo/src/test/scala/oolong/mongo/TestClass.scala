@@ -8,6 +8,7 @@ case class TestClass(
     field2: Int,
     field3: InnerClass,
     field4: List[Int],
+    field5: Option[Long]
 ) derives BsonEncoder,
       BsonDecoder
 

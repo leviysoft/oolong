@@ -159,6 +159,9 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case '{ ($x: Option[_]).isDefined } =>
         QExpr.Exists(parse(x), QExpr.Constant(true))
 
+      case '{ ($x: Option[_]).nonEmpty } =>
+        QExpr.Exists(parse(x), QExpr.Constant(true))
+
       case PropSelector(name, path) if name == paramName =>
         QExpr.Prop(path.mkString("."))
 

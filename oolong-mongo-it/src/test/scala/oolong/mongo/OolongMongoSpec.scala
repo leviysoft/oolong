@@ -32,11 +32,11 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
 
   override def beforeAll(): Unit = {
     val documents = List(
-      TestClass("0", 0, InnerClass("sdf"), List(1, 2), None),
-      TestClass("1", 1, InnerClass("qwe"), Nil, Some(2L)),
-      TestClass("2", 2, InnerClass("asd"), Nil, None),
-      TestClass("3", 12, InnerClass("sdf"), Nil, None),
-      TestClass("12345", 12, InnerClass("sdf"), Nil, None),
+      TestClass("0", 0, InnerClass("sdf", 1), List(1, 2), None, List(InnerClass("abc", 1))),
+      TestClass("1", 1, InnerClass("qwe", 2), Nil, Some(2L), List(InnerClass("cde", 10))),
+      TestClass("2", 2, InnerClass("asd", 3), Nil, None, List.empty),
+      TestClass("3", 12, InnerClass("sdf", 4), List(10, 25), None, List.empty),
+      TestClass("12345", 12, InnerClass("sdf", 5), Nil, None, List.empty),
     )
 
     implicit val ec = ExecutionContext.global
@@ -56,7 +56,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
         case Failure(exception) => Future.failed(exception)
         case Success(value)     => Future.successful(value)
       }
-    } yield assert(v == TestClass("1", 1, InnerClass("qwe"), Nil, Some(2L)))
+    } yield assert(v == TestClass("1", 1, InnerClass("qwe", 2), Nil, Some(2L), List(InnerClass("cde", 10))))
   }
 
   it should "find documents in a collection with query with runtime constant" in {
@@ -130,7 +130,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
   }
 
   it should "compile queries with `.contains` #3" in {
-    val q = query[TestClass](x => lift(Set(InnerClass("qwe"), InnerClass("asd"))).contains(x.field3))
+    val q = query[TestClass](x => lift(Set(InnerClass("qwe", 2), InnerClass("asd", 3))).contains(x.field3))
 
     for {
       res <- collection.find(q).toFuture()
@@ -146,7 +146,7 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
   }
 
   it should "compile queries with nested objects" in {
-    val q = query[TestClass](_.field3 == lift(InnerClass("qwe")))
+    val q = query[TestClass](_.field3 == lift(InnerClass("qwe", 2)))
 
     for {
       res <- collection.find(q).toFuture()
@@ -214,15 +214,23 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
 
     for {
       res <- collection.find(q).toFuture()
-    } yield assert(res.size == 1)
+    } yield assert(res.size == 2)
   }
 
   it should "compile queries with $elemMatch" in {
-    val q = query[TestClass](_.field2 >= 10)
+    val q = query[TestClass](tc => tc.field6.exists(s => s.innerField == "cde"))
 
     for {
       res <- collection.find(q).toFuture()
-    } yield assert(res.size == 2)
+    } yield assert(res.size == 1)
+  }
+
+  it should "compile queries with $elemMatch #2" in {
+    val q = query[TestClass](tc => tc.field6.exists(s => s.innerField != "cde" && s.otherField < 10))
+
+    for {
+      res <- collection.find(q).toFuture()
+    } yield assert(res.size == 1)
   }
 
   it should "compile queries with $all" in {
@@ -233,14 +241,5 @@ class OolongMongoSpec extends AsyncFlatSpec with ForAllTestContainer with Before
       res <- collection.find(q).toFuture()
     } yield assert(res.size == 1)
   }
-
-  // TODO: test updates
-//  it should "compile updates" in {
-//    val upd = compileUpdate {
-//      update[CompanySuccess]
-//        .set(_.from, 2)
-//        .set(_.field4, liftU(Field("qweasd")))
-//    }
-//  }
 
 }

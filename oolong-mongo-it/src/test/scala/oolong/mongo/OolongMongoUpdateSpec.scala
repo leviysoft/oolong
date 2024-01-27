@@ -23,11 +23,11 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
 
   override def beforeAll(): Unit = {
     val documents = List(
-      TestClass("0", 0, InnerClass("sdf"), List(1, 2), None),
-      TestClass("1", 1, InnerClass("qwe"), Nil, Some(2L)),
-      TestClass("2", 2, InnerClass("asd"), Nil, None),
-      TestClass("3", 12, InnerClass("sdf"), Nil, None),
-      TestClass("12345", 12, InnerClass("sdf"), Nil, None),
+      TestClass("0", 0, InnerClass("sdf", 2.0), List(1, 2), None, List.empty),
+      TestClass("1", 1, InnerClass("qwe", 3), Nil, Some(2L), List.empty),
+      TestClass("2", 2, InnerClass("asd", 0), Nil, None, List.empty),
+      TestClass("3", 12, InnerClass("sdf", 1), Nil, None, List.empty),
+      TestClass("12345", 12, InnerClass("sdf", 11), Nil, None, List.empty),
     )
 
     implicit val ec = ExecutionContext.global

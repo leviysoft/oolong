@@ -230,13 +230,15 @@ val q = query[Course](_.studentNames.length == 20)
 ```scala
 import oolong.dsl.*
 
-case class Course(studentNames: List[String], tutor: String)
+case class Student(name: String, age: Int)
 
-val q = query[Course](_.studentNames.exists(_ == 20)) // $elemMatch ommited when querying single field
-// q is {"studentNames": 20}
+case class Course(students: List[Student], tutor: String)
 
-val q = query[Course](course => course.studentNames.exists(_ > 20) && course.tutor == "Pavlov")
-// q is {"studentNames": {"$elemMatch": {"studentNames": {"$gt": 20}, "tutor": "Pavlov"}}}
+val q = query[Course](_.students.exists(_.age == 20)) // $elemMatch ommited when querying single field
+// q is {"students.age": 20}
+
+val q = query[Course](course => course.students.exists(st => st.age > 20 && st.name == "Pavel"))
+// q is {"students": {"$elemMatch": {"age": {"$gt": 20}, "name": "Pavel"}}}
 
 ```
 

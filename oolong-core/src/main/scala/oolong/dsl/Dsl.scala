@@ -47,4 +47,12 @@ sealed trait Updater[DocT] {
   def setOnInsert[PropT, ValueT](selectProp: DocT => PropT, value: ValueT)(using
       PropT =:= ValueT,
   ): Updater[DocT] = useWithinMacro("setOnInsert")
+
+  def addToSet[PropT, ValueT](selectProp: DocT => Iterable[PropT], value: ValueT)(using
+      PropT =:= ValueT
+  ): Updater[DocT] = useWithinMacro("addToSet")
+
+  def addToSetAll[PropT, ValueT](selectProp: DocT => Iterable[PropT], value: Iterable[ValueT])(using
+      PropT =:= ValueT
+  ): Updater[DocT] = useWithinMacro("addToSet")
 }

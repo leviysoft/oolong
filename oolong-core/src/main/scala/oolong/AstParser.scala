@@ -304,6 +304,16 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
           val value = getValue(valueExpr)
           parseUpdater(updater, FieldUpdateExpr.SetOnInsert(UExpr.Prop(prop), value) :: acc)
 
+        case '{type t; ($updater: Updater[Doc]).addToSetAll[`t`, `t`]($selectProp, ($valueExpr: Iterable[`t`]))} =>
+          val prop  = parsePropSelector(selectProp)
+          val value = getValueOrIterable(valueExpr)
+          parseUpdater(updater, FieldUpdateExpr.AddToSet(UExpr.Prop(prop), value, multipleValues = true) :: acc)
+
+        case '{type t; ($updater: Updater[Doc]).addToSet[`t`, `t`]($selectProp, ($valueExpr: `t` ))} =>
+          val prop  = parsePropSelector(selectProp)
+          val value = getValueOrIterable(valueExpr)
+          parseUpdater(updater, FieldUpdateExpr.AddToSet(UExpr.Prop(prop), value, multipleValues = false) :: acc)
+          
         case '{ $updater: Updater[Doc] } =>
           updater match {
             case AsTerm(Ident(name)) if name == paramName =>
@@ -345,6 +355,20 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         report.errorAndAbort("Unsupported constant type, consider using `lift`")
     }
   }
+
+  private def getValueOrIterable(expr: Expr[Any]): UExpr =
+    expr match
+      case '{ $iter: Iterable[t] } => getIterable(iter)
+      case base                    => getValue(base)
+
+  def getIterable[T: Type](expr: Expr[Iterable[T]]): UExpr =
+    expr match {
+      // AsIterable can ignore lift e.g. in following case: lift(List(List(Random.nextInt()))
+      case '{ type t; lift($x: Iterable[`t`]) } => UExpr.ScalaCodeIterable(x)
+      case AsIterable(elems)                    => UExpr.UIterable(elems.map(getConstant).toList)
+      case _ =>
+        report.errorAndAbort("Unexpected expr while parsing AST: " + expr.asTerm.show(using Printer.TreeStructure))
+    }
 
   private def getValue(expr: Expr[Any]): UExpr =
     expr match

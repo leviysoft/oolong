@@ -6,6 +6,7 @@ import scala.concurrent.ExecutionContext
 import com.dimafeng.testcontainers.ForAllTestContainer
 import com.dimafeng.testcontainers.MongoDBContainer
 import concurrent.duration.DurationInt
+import oolong.bson.BsonDecoder
 import oolong.dsl.*
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.bson.BsonDocument
@@ -127,6 +128,44 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
         )
         .head()
     } yield assert(res.wasAcknowledged() && res.getMatchedCount == 1 && res.getModifiedCount == 1)
+  }
+
+  it should "update with $addToSet" in {
+    for {
+      res <- collection
+        .updateOne(
+          query[TestClass](_.field1 == "0"),
+          update[TestClass](
+            _.addToSet(_.field4, 3)
+          )
+        )
+        .head()
+      upd <- collection
+        .find(query[TestClass](_.field1 == "0"))
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+    } yield assert(
+      res.wasAcknowledged() && res.getModifiedCount == 1 && upd.field4.size == 3
+    )
+  }
+
+  it should "update with $addToSet using $each" in {
+    for {
+      res <- collection
+        .updateOne(
+          query[TestClass](_.field1 == "0"),
+          update[TestClass](
+            _.addToSetAll(_.field4, List(4, 5))
+          )
+        )
+        .head()
+      upd <- collection
+        .find(query[TestClass](_.field1 == "0"))
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+    } yield assert(
+      res.wasAcknowledged() && res.getModifiedCount == 1 && upd.field4.size == 4
+    )
   }
 
 }

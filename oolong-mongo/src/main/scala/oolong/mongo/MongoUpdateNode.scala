@@ -13,7 +13,11 @@ case object MongoUpdateNode {
 
   case class Constant[T](t: T) extends MU
 
+  case class UIterable[T](t: List[MU]) extends MU
+
   case class ScalaCode(code: Expr[Any]) extends MU
+
+  case class ScalaCodeIterable(code: Expr[Iterable[Any]]) extends MU
 
   sealed abstract class MongoUpdateOp(val prop: Prop, val value: MU) extends MU
   object MongoUpdateOp {
@@ -25,5 +29,7 @@ case object MongoUpdateNode {
     case class Mul(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
     case class Rename(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
     case class SetOnInsert(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
+
+    case class AddToSet(override val prop: Prop, override val value: MU, each: Boolean) extends MongoUpdateOp(prop, value)
   }
 }

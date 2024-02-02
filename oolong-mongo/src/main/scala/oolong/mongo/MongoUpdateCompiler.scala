@@ -7,7 +7,9 @@ import scala.quoted.Type
 import oolong.*
 import oolong.UExpr.FieldUpdateExpr
 import oolong.bson.meta.QueryMeta
+import oolong.mongo.MongoUpdateNode.MongoUpdateOp
 import oolong.mongo.MongoUpdateNode as MU
+import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.bson.BsonDouble
@@ -44,10 +46,14 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
             case FieldUpdateExpr.SetOnInsert(prop, expr) =>
               MU.MongoUpdateOp.SetOnInsert(MU.Prop(renames.getOrElse(prop.path, prop.path)), rec(expr))
             case FieldUpdateExpr.Unset(prop) => MU.MongoUpdateOp.Unset(MU.Prop(renames.getOrElse(prop.path, prop.path)))
+            case FieldUpdateExpr.AddToSet(prop, expr, each) =>
+              MU.MongoUpdateOp.AddToSet(MU.Prop(renames.getOrElse(prop.path, prop.path)), rec(expr), each)
           })
-        case UExpr.ScalaCode(code) => MU.ScalaCode(code)
-        case UExpr.Constant(t)     => MU.Constant(t)
-        case _                     => report.errorAndAbort("Unexpected expr " + pprint(ast))
+        case UExpr.ScalaCode(code)      => MU.ScalaCode(code)
+        case UExpr.Constant(t)          => MU.Constant(t)
+        case UExpr.UIterable(t)         => MU.UIterable(t.map(rec(_)))
+        case UExpr.ScalaCodeIterable(t) => MU.ScalaCodeIterable(t)
+        case _                          => report.errorAndAbort("Unexpected expr " + pprint(ast))
       }
 
     rec(ast, meta)
@@ -82,7 +88,10 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           )("$rename"),
           renderOps(
             ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s }.map(op => render(op.prop) + ": " + render(op.value))
-          )("$setOnInsert")
+          )("$setOnInsert"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.AddToSet => s }.map(renderAddToSet)
+          )("$addToSet")
         ).flatten
           .mkString("{\n", ",\n", "\n}")
 
@@ -100,10 +109,20 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           case '{ ${ x }: t } => RenderUtils.renderCaseClass[t](x)
           case _              => "?"
 
+      case MU.UIterable(iterable)  => iterable.map(render).mkString("[", ",", "]")
+      case MU.ScalaCodeIterable(_) => "[ ? ]"
+
       case _ => report.errorAndAbort(s"Wrong term: $query")
     }
 
-  def renderOps(ops: List[String])(op: String) =
+  private def renderAddToSet(op: MU.MongoUpdateOp.AddToSet)(using Quotes): String =
+    val renderOfValue = render(op.value)
+    val finalRenderOfValue =
+      if op.each then s"""{ "$$each" : $renderOfValue }"""
+      else renderOfValue
+    render(op.prop) + ": " + finalRenderOfValue
+
+  private def renderOps(ops: List[String])(op: String) =
     ops match
       case Nil  => None
       case list => Some(s"\t \"$op\": { " + list.mkString(", ") + " }")
@@ -112,10 +131,15 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
     import quotes.reflect.*
 
     def targetOps(setters: List[MU.MongoUpdateOp]): List[Expr[(String, BsonValue)]] =
-      setters.map { case op: MU.MongoUpdateOp =>
+      setters.map { op =>
         val key       = op.prop.path
         val valueExpr = handleValues(op.value)
-        '{ ${ Expr(key) } -> $valueExpr }
+        val finalValueExpr = op match
+          case addToSet: MongoUpdateOp.AddToSet =>
+            if addToSet.each then '{ BsonDocument("$each" -> $valueExpr) }
+            else valueExpr
+          case _ => valueExpr
+        '{ ${ Expr(key) } -> $finalValueExpr }
       }
 
     optRepr match {
@@ -128,6 +152,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
         val tMuls         = targetOps(ops.collect { case s: MU.MongoUpdateOp.Mul => s })
         val tRenames      = targetOps(ops.collect { case s: MU.MongoUpdateOp.Rename => s })
         val tSetOnInserts = targetOps(ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s })
+        val tAddToSets    = targetOps(ops.collect { case s: MU.MongoUpdateOp.AddToSet => s })
 
         // format: off
         def updaterGroup(groupName: String, updaters: List[Expr[(String, BsonValue)]]): Option[Expr[(String, BsonDocument)]] =
@@ -147,6 +172,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           updaterGroup("$mul", tMuls),
           updaterGroup("$rename", tRenames),
           updaterGroup("$setOnInsert", tSetOnInserts),
+          updaterGroup("$addToSet", tAddToSets),
         ).flatten
 
         '{
@@ -181,6 +207,13 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
       case MU.Constant(b: Boolean) =>
         '{ BsonBoolean.apply(${ Expr(b: Boolean) }) }
       case MU.ScalaCode(code) => BsonUtils.extractLifted(code)
-      case _                  => report.errorAndAbort(s"Given type is not literal constant")
+      case MU.UIterable(list) =>
+        '{
+          BsonArray.fromIterable(${
+            Expr.ofList(list.map(handleValues))
+          })
+        }
+      case MU.ScalaCodeIterable(exprList) => BsonUtils.extractLifted(exprList)
+      case _                              => report.errorAndAbort(s"Given type is not literal constant")
     }
 }

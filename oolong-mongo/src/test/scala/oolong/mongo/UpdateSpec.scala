@@ -23,7 +23,10 @@ class UpdateSpec extends AnyFunSuite {
       dateField: LocalDate,
       innerClassField: InnerClass,
       optionField: Option[Long],
-      optionInnerClassField: Option[InnerClass]
+      optionInnerClassField: Option[InnerClass],
+      listField: List[Int],
+      classInnerClassField: List[InnerClass],
+      nestedListField: List[List[Int]]
   )
 
   case class InnerClass(
@@ -167,6 +170,51 @@ class UpdateSpec extends AnyFunSuite {
       q,
       repr,
       BsonDocument("$setOnInsert" -> BsonDocument("intField" -> BsonInt32(14)))
+    )
+  }
+
+  test("$addToSet") {
+    val q    = update[TestClass](_.addToSet(_.listField, 1))
+    val repr = renderUpdate[TestClass](_.addToSet(_.listField, 1))
+    test(
+      q,
+      repr,
+      BsonDocument("$addToSet" -> BsonDocument("listField" -> BsonInt32(1)))
+    )
+  }
+
+  test("$addToSet nested") {
+    val q    = update[TestClass](_.addToSet(_.nestedListField, List(1, 2, 3)))
+    val repr = renderUpdate[TestClass](_.addToSet(_.nestedListField, List(1, 2, 3)))
+    test(
+      q,
+      repr,
+      BsonDocument("$addToSet" -> BsonDocument("nestedListField" -> BsonArray(BsonInt32(1), BsonInt32(2), BsonInt32(3))))
+    )
+  }
+
+  test("$addToSet with $each") {
+    val q    = update[TestClass](_.addToSetAll(_.listField, List(1)))
+    val repr = renderUpdate[TestClass](_.addToSetAll(_.listField, List(1)))
+    test(
+      q,
+      repr,
+      BsonDocument("$addToSet" -> BsonDocument("listField" -> BsonDocument("$each" -> BsonArray(BsonInt32(1)))))
+    )
+  }
+
+  test("$addToSet with $each nested") {
+    val q    = update[TestClass](_.addToSetAll(_.nestedListField, lift(List(List(1, 2, 3)))))
+    val repr = renderUpdate[TestClass](_.addToSetAll(_.nestedListField, lift(List(List(1, 2, 3)))))
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "$addToSet" -> BsonDocument(
+          "nestedListField" -> BsonDocument("$each" -> BsonArray(BsonArray(BsonInt32(1), BsonInt32(2), BsonInt32(3))))
+        )
+      ),
+      ignoreRender = true
     )
   }
 

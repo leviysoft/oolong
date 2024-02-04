@@ -349,6 +349,17 @@ val q = update[Student](_.addToSetAll(_.courses, List(42, 44, 53)))
 // q us {"$addToSet": {"courses": {$each: [42, 44, 53] }}}
 ```
 
+2. $pop
+
+```scala
+case class Student(id: Int, courses: List[Int])
+
+val q = update[Student](_.popHead(_.courses)) // removes the first element
+// q us {"$pop": {"courses": -1}}
+
+val q1 = update[Student](_.popLast(_.courses)) // removes the last element
+// q1 us {"$pop": {"courses": 1}}
+```
 
 #### Projection
 

@@ -43,6 +43,14 @@ private[oolong] object UExpr {
     // array update operators
     case class AddToSet(prop: Prop, expr: UExpr, multipleValues: Boolean) extends FieldUpdateExpr(prop)
 
+    case class Pop(prop: Prop, remove: Pop.Remove) extends FieldUpdateExpr(prop)
+
+    object Pop {
+      enum Remove {
+        case First, Last
+      }
+    }
+
   }
 
 }

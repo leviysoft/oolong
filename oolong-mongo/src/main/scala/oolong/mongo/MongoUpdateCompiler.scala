@@ -8,6 +8,7 @@ import oolong.*
 import oolong.UExpr.FieldUpdateExpr
 import oolong.bson.meta.QueryMeta
 import oolong.mongo.MongoUpdateNode.MongoUpdateOp
+import oolong.mongo.MongoUpdateNode.MongoUpdateOp.Pop.Remove
 import oolong.mongo.MongoUpdateNode as MU
 import org.mongodb.scala.bson.BsonArray
 import org.mongodb.scala.bson.BsonBoolean
@@ -48,6 +49,11 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
             case FieldUpdateExpr.Unset(prop) => MU.MongoUpdateOp.Unset(MU.Prop(renames.getOrElse(prop.path, prop.path)))
             case FieldUpdateExpr.AddToSet(prop, expr, each) =>
               MU.MongoUpdateOp.AddToSet(MU.Prop(renames.getOrElse(prop.path, prop.path)), rec(expr), each)
+            case FieldUpdateExpr.Pop(prop, remove) =>
+              val muRemove = remove match
+                case FieldUpdateExpr.Pop.Remove.First => Remove.First
+                case FieldUpdateExpr.Pop.Remove.Last  => Remove.Last
+              MU.MongoUpdateOp.Pop(MU.Prop(renames.getOrElse(prop.path, prop.path)), muRemove)
           })
         case UExpr.ScalaCode(code)      => MU.ScalaCode(code)
         case UExpr.Constant(t)          => MU.Constant(t)
@@ -91,7 +97,10 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           )("$setOnInsert"),
           renderOps(
             ops.collect { case s: MU.MongoUpdateOp.AddToSet => s }.map(renderAddToSet)
-          )("$addToSet")
+          )("$addToSet"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Pop => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$pop")
         ).flatten
           .mkString("{\n", ",\n", "\n}")
 
@@ -153,6 +162,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
         val tRenames      = targetOps(ops.collect { case s: MU.MongoUpdateOp.Rename => s })
         val tSetOnInserts = targetOps(ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s })
         val tAddToSets    = targetOps(ops.collect { case s: MU.MongoUpdateOp.AddToSet => s })
+        val tPops         = targetOps(ops.collect { case s: MU.MongoUpdateOp.Pop => s })
 
         // format: off
         def updaterGroup(groupName: String, updaters: List[Expr[(String, BsonValue)]]): Option[Expr[(String, BsonDocument)]] =
@@ -173,6 +183,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           updaterGroup("$rename", tRenames),
           updaterGroup("$setOnInsert", tSetOnInserts),
           updaterGroup("$addToSet", tAddToSets),
+          updaterGroup("$pop", tPops),
         ).flatten
 
         '{

@@ -55,4 +55,7 @@ sealed trait Updater[DocT] {
   def addToSetAll[PropT, ValueT](selectProp: DocT => Iterable[PropT], value: Iterable[ValueT])(using
       PropT =:= ValueT
   ): Updater[DocT] = useWithinMacro("addToSet")
+
+  def popHead(selectProp: DocT => Iterable[?]): Updater[DocT] = useWithinMacro("popHead")
+  def popLast(selectProp: DocT => Iterable[?]): Updater[DocT] = useWithinMacro("popLast")
 }

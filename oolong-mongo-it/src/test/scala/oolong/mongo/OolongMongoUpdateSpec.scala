@@ -5,6 +5,8 @@ import scala.concurrent.ExecutionContext
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import com.dimafeng.testcontainers.MongoDBContainer
+import com.mongodb.client.model.FindOneAndUpdateOptions
+import com.mongodb.client.model.ReturnDocument
 import concurrent.duration.DurationInt
 import oolong.bson.BsonDecoder
 import oolong.dsl.*
@@ -28,6 +30,7 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
       TestClass("1", 1, InnerClass("qwe", 3), Nil, Some(2L), List.empty),
       TestClass("2", 2, InnerClass("asd", 0), Nil, None, List.empty),
       TestClass("3", 12, InnerClass("sdf", 1), Nil, None, List.empty),
+      TestClass("4", 13, InnerClass("sdf", 1), List(1), None, List.empty),
       TestClass("12345", 12, InnerClass("sdf", 11), Nil, None, List.empty),
     )
 
@@ -132,39 +135,36 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
 
   it should "update with $addToSet" in {
     for {
-      res <- collection
-        .updateOne(
+      upd <- collection
+        .findOneAndUpdate(
           query[TestClass](_.field1 == "0"),
           update[TestClass](
             _.addToSet(_.field4, 3)
-          )
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
         )
         .head()
-      upd <- collection
-        .find(query[TestClass](_.field1 == "0"))
-        .head()
         .map(BsonDecoder[TestClass].fromBson(_).get)
+
     } yield assert(
-      res.wasAcknowledged() && res.getModifiedCount == 1 && upd.field4.size == 3
+      upd.field4 == List(1, 2, 3)
     )
   }
 
   it should "update with $addToSet using $each" in {
     for {
-      res <- collection
-        .updateOne(
-          query[TestClass](_.field1 == "0"),
-          update[TestClass](
-            _.addToSetAll(_.field4, List(4, 5))
-          )
-        )
-        .head()
       upd <- collection
-        .find(query[TestClass](_.field1 == "0"))
+        .findOneAndUpdate(
+          query[TestClass](_.field1 == "4"),
+          update[TestClass](
+            _.addToSetAll(_.field4, List(2, 3))
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
         .head()
         .map(BsonDecoder[TestClass].fromBson(_).get)
     } yield assert(
-      res.wasAcknowledged() && res.getModifiedCount == 1 && upd.field4.size == 4
+      upd.field4 == List(1, 2, 3)
     )
   }
 

@@ -331,6 +331,25 @@ $unset can be used only to set None on Option fields
 val q = update[Observation](_.unset(_.threshold))
 // q is {"$unset": {"threshold": ""}}
 ```
+
+II Array update operators
+
+1. $addToSet
+
+```scala
+case class Student(id: Int, courses: List[Int])
+
+val q = update[Student](_.addToSet(_.courses, 55))
+// q us {"$addToSet": {"courses": 55}}
+```
+In order to append multiple values to array `addToSetAll` should be used:
+
+```scala
+val q = update[Student](_.addToSetAll(_.courses, List(42, 44, 53)))
+// q us {"$addToSet": {"courses": {$each: [42, 44, 53] }}}
+```
+
+
 #### Projection
 
 ```scala 3

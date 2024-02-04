@@ -30,6 +30,7 @@ case object MongoUpdateNode {
     case class Rename(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
     case class SetOnInsert(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
 
-    case class AddToSet(override val prop: Prop, override val value: MU, each: Boolean) extends MongoUpdateOp(prop, value)
+    case class AddToSet(override val prop: Prop, override val value: MU, each: Boolean)
+        extends MongoUpdateOp(prop, value)
   }
 }

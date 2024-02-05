@@ -32,5 +32,16 @@ case object MongoUpdateNode {
 
     case class AddToSet(override val prop: Prop, override val value: MU, each: Boolean)
         extends MongoUpdateOp(prop, value)
+
+    case class Pop(override val prop: Prop, remove: Pop.Remove) extends MongoUpdateOp(prop, remove.toConstant)
+    object Pop {
+      enum Remove {
+        case First, Last
+
+        def toConstant: MU.Constant[Int] = this match
+          case Remove.First => MU.Constant(-1)
+          case Remove.Last  => MU.Constant(1)
+      }
+    }
   }
 }

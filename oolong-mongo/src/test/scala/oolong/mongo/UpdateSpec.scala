@@ -218,6 +218,34 @@ class UpdateSpec extends AnyFunSuite {
     )
   }
 
+  test("$pop first") {
+    val q    = update[TestClass](_.popHead(_.nestedListField))
+    val repr = renderUpdate[TestClass](_.popHead(_.nestedListField))
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "$pop" -> BsonDocument(
+          "nestedListField" -> BsonInt32(-1)
+        )
+      ),
+    )
+  }
+
+  test("$pop last") {
+    val q    = update[TestClass](_.popLast(_.nestedListField))
+    val repr = renderUpdate[TestClass](_.popLast(_.nestedListField))
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "$pop" -> BsonDocument(
+          "nestedListField" -> BsonInt32(1)
+        )
+      ),
+    )
+  }
+
   test("several update operators combined") {
     val q = update[TestClass](
       _.unset(_.dateField)

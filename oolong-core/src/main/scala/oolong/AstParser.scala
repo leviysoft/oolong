@@ -313,6 +313,14 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
           val prop  = parsePropSelector(selectProp)
           val value = getValueOrIterable(valueExpr)
           parseUpdater(updater, FieldUpdateExpr.AddToSet(UExpr.Prop(prop), value, multipleValues = false) :: acc)
+
+        case '{($updater: Updater[Doc]).popHead($selectProp)} =>
+          val prop  = parsePropSelector(selectProp)
+          parseUpdater(updater, FieldUpdateExpr.Pop(UExpr.Prop(prop), FieldUpdateExpr.Pop.Remove.First) :: acc)
+
+        case '{($updater: Updater[Doc]).popLast($selectProp)} =>
+          val prop  = parsePropSelector(selectProp)
+          parseUpdater(updater, FieldUpdateExpr.Pop(UExpr.Prop(prop), FieldUpdateExpr.Pop.Remove.Last) :: acc)
           
         case '{ $updater: Updater[Doc] } =>
           updater match {

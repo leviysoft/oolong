@@ -32,6 +32,8 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
       TestClass("3", 12, InnerClass("sdf", 1), Nil, None, List.empty),
       TestClass("4", 13, InnerClass("sdf", 1), List(1), None, List.empty),
       TestClass("12345", 12, InnerClass("sdf", 11), Nil, None, List.empty),
+      TestClass("popHead", 1, InnerClass("popHead", 1), List(1, 2, 3), None, List.empty),
+      TestClass("popTail", 1, InnerClass("popTail", 1), List(1, 2, 3), None, List.empty)
     )
 
     implicit val ec = ExecutionContext.global
@@ -165,6 +167,40 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
         .map(BsonDecoder[TestClass].fromBson(_).get)
     } yield assert(
       upd.field4 == List(1, 2, 3)
+    )
+  }
+
+  it should "$pop the fist element" in {
+    for {
+      upd <- collection
+        .findOneAndUpdate(
+          query[TestClass](_.field1 == "popHead"),
+          update[TestClass](
+            _.popHead(_.field4)
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+    } yield assert(
+      upd.field4 == List(2, 3)
+    )
+  }
+
+  it should "$pop the last element" in {
+    for {
+      upd <- collection
+        .findOneAndUpdate(
+          query[TestClass](_.field1 == "popTail"),
+          update[TestClass](
+            _.popLast(_.field4)
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+    } yield assert(
+      upd.field4 == List(1, 2)
     )
   }
 

@@ -1,13 +1,9 @@
-import scalafix.sbt.ScalafixPlugin.autoImport.scalafixResolvers
-
-import coursierapi.{MavenRepository => CoursierMvnRepo}
-import sbt.Keys._
-import sbt._
+import sbt.Keys.*
 
 object Settings {
   val common = Seq(
     organization := "io.github.leviysoft",
-    scalaVersion := "3.3.1",
+    scalaVersion := "3.3.3",
     scalacOptions ++= Seq(
       // For reference: https://docs.scala-lang.org/scala3/guides/migration/options-lookup.html
       "-encoding",

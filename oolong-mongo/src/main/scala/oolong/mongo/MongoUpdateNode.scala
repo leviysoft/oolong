@@ -19,6 +19,8 @@ case object MongoUpdateNode {
 
   case class ScalaCodeIterable(code: Expr[Iterable[Any]]) extends MU
 
+  case class QueryWrapper(query: MongoQueryNode) extends MU
+
   sealed abstract class MongoUpdateOp(val prop: Prop, val value: MU) extends MU
   object MongoUpdateOp {
     case class Set(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
@@ -43,5 +45,7 @@ case object MongoUpdateNode {
           case Remove.Last  => MU.Constant(1)
       }
     }
+
+    case class Pull(override val prop: Prop, fieldQuery: QueryWrapper) extends MongoUpdateOp(prop, fieldQuery)
   }
 }

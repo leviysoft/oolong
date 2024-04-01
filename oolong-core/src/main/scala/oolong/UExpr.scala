@@ -51,6 +51,8 @@ private[oolong] object UExpr {
       }
     }
 
+    case class Pull(prop: Prop, cond: QExpr) extends FieldUpdateExpr(prop)
+
   }
 
 }

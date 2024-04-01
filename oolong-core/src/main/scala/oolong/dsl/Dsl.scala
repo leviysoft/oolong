@@ -58,4 +58,8 @@ sealed trait Updater[DocT] {
 
   def popHead(selectProp: DocT => Iterable[?]): Updater[DocT] = useWithinMacro("popHead")
   def popLast(selectProp: DocT => Iterable[?]): Updater[DocT] = useWithinMacro("popLast")
+
+  def pull[PropT, ValueT](selectProp: DocT => Iterable[PropT], input: PropT => Boolean)(using
+      PropT =:= ValueT
+  ): Updater[DocT] = useWithinMacro("pull")
 }

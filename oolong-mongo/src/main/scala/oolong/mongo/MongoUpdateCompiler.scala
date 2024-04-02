@@ -54,6 +54,13 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
                 case FieldUpdateExpr.Pop.Remove.First => Remove.First
                 case FieldUpdateExpr.Pop.Remove.Last  => Remove.Last
               MU.MongoUpdateOp.Pop(MU.Prop(renames.getOrElse(prop.path, prop.path)), muRemove)
+            case FieldUpdateExpr.Pull(prop, query) =>
+              val optimized = MongoQueryCompiler.optimize(MongoQueryCompiler.opt(LogicalOptimizer.optimize(query)))
+              MU.MongoUpdateOp.Pull(
+                MU.Prop(renames.getOrElse(prop.path, prop.path)),
+                MU.QueryWrapper(optimized)
+              )
+
           })
         case UExpr.ScalaCode(code)      => MU.ScalaCode(code)
         case UExpr.Constant(t)          => MU.Constant(t)
@@ -100,7 +107,10 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           )("$addToSet"),
           renderOps(
             ops.collect { case s: MU.MongoUpdateOp.Pop => s }.map(op => render(op.prop) + ": " + render(op.value))
-          )("$pop")
+          )("$pop"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.Pull => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$pull")
         ).flatten
           .mkString("{\n", ",\n", "\n}")
 
@@ -120,6 +130,9 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
 
       case MU.UIterable(iterable)  => iterable.map(render).mkString("[", ",", "]")
       case MU.ScalaCodeIterable(_) => "[ ? ]"
+
+      case MongoUpdateNode.QueryWrapper(query) =>
+        MongoQueryCompiler.render(query)
 
       case _ => report.errorAndAbort(s"Wrong term: $query")
     }
@@ -142,11 +155,13 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
     def targetOps(setters: List[MU.MongoUpdateOp]): List[Expr[(String, BsonValue)]] =
       setters.map { op =>
         val key       = op.prop.path
-        val valueExpr = handleValues(op.value)
+        def valueExpr = handleValues(op.value)
         val finalValueExpr = op match
           case addToSet: MongoUpdateOp.AddToSet =>
             if addToSet.each then '{ BsonDocument("$each" -> $valueExpr) }
             else valueExpr
+          case pull: MongoUpdateOp.Pull =>
+            MongoQueryCompiler.target(pull.fieldQuery.query)
           case _ => valueExpr
         '{ ${ Expr(key) } -> $finalValueExpr }
       }
@@ -163,6 +178,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
         val tSetOnInserts = targetOps(ops.collect { case s: MU.MongoUpdateOp.SetOnInsert => s })
         val tAddToSets    = targetOps(ops.collect { case s: MU.MongoUpdateOp.AddToSet => s })
         val tPops         = targetOps(ops.collect { case s: MU.MongoUpdateOp.Pop => s })
+        val tPulls        = targetOps(ops.collect { case s: MU.MongoUpdateOp.Pull => s })
 
         // format: off
         def updaterGroup(groupName: String, updaters: List[Expr[(String, BsonValue)]]): Option[Expr[(String, BsonDocument)]] =
@@ -184,6 +200,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           updaterGroup("$setOnInsert", tSetOnInserts),
           updaterGroup("$addToSet", tAddToSets),
           updaterGroup("$pop", tPops),
+          updaterGroup("$pull", tPulls),
         ).flatten
 
         '{

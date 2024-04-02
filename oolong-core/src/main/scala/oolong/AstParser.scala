@@ -321,6 +321,10 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         case '{($updater: Updater[Doc]).popLast($selectProp)} =>
           val prop  = parsePropSelector(selectProp)
           parseUpdater(updater, FieldUpdateExpr.Pop(UExpr.Prop(prop), FieldUpdateExpr.Pop.Remove.Last) :: acc)
+
+        case '{type t; ($updater: Updater[Doc]).pull[`t`,`t`]($selectProp, $input)} =>
+          val prop  = parsePropSelector(selectProp)
+          parseUpdater(updater, FieldUpdateExpr.Pull(UExpr.Prop(prop), parseQExpr[`t`](input)) :: acc)
           
         case '{ $updater: Updater[Doc] } =>
           updater match {

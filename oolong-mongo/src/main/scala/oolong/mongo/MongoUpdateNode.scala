@@ -47,5 +47,7 @@ case object MongoUpdateNode {
     }
 
     case class Pull(override val prop: Prop, fieldQuery: QueryWrapper) extends MongoUpdateOp(prop, fieldQuery)
+
+    case class PullAll(override val prop: Prop, override val value: MU) extends MongoUpdateOp(prop, value)
   }
 }

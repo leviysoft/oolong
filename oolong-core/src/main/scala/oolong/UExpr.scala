@@ -53,6 +53,8 @@ private[oolong] object UExpr {
 
     case class Pull(prop: Prop, cond: QExpr) extends FieldUpdateExpr(prop)
 
+    case class PullAll(prop: Prop, expr: UExpr) extends FieldUpdateExpr(prop)
+
   }
 
 }

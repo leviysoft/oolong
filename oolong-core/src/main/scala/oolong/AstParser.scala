@@ -325,7 +325,13 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
         case '{type t; ($updater: Updater[Doc]).pull[`t`,`t`]($selectProp, $input)} =>
           val prop  = parsePropSelector(selectProp)
           parseUpdater(updater, FieldUpdateExpr.Pull(UExpr.Prop(prop), parseQExpr[`t`](input)) :: acc)
-          
+
+        case '{type t; ($updater: Updater[Doc]).pullAll[`t`,`t`]($selectProp, $input: Iterable[`t`])} =>
+          val prop  = parsePropSelector(selectProp)
+          val value = getValueOrIterable(input)
+          parseUpdater(updater, FieldUpdateExpr.PullAll(UExpr.Prop(prop), value) :: acc)
+
+
         case '{ $updater: Updater[Doc] } =>
           updater match {
             case AsTerm(Ident(name)) if name == paramName =>

@@ -8,7 +8,8 @@ import com.dimafeng.testcontainers.MongoDBContainer
 import com.mongodb.client.model.FindOneAndUpdateOptions
 import com.mongodb.client.model.ReturnDocument
 import concurrent.duration.DurationInt
-import oolong.bson.BsonDecoder
+import oolong.bson.*
+import oolong.bson.given
 import oolong.dsl.*
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.bson.BsonDocument
@@ -33,7 +34,8 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
       TestClass("4", 13, InnerClass("sdf", 1), List(1), None, List.empty),
       TestClass("12345", 12, InnerClass("sdf", 11), Nil, None, List.empty),
       TestClass("popHead", 1, InnerClass("popHead", 1), List(1, 2, 3), None, List.empty),
-      TestClass("popTail", 1, InnerClass("popTail", 1), List(1, 2, 3), None, List.empty)
+      TestClass("popTail", 1, InnerClass("popTail", 1), List(1, 2, 3), None, List.empty),
+      TestClass("pullAll", 1, InnerClass("pullAll", 1), List(1, 2, 3), None, List(InnerClass("1", 1), InnerClass("2", 2))),
     )
 
     implicit val ec = ExecutionContext.global
@@ -201,6 +203,41 @@ class OolongMongoUpdateSpec extends AsyncFlatSpec with ForAllTestContainer with 
         .map(BsonDecoder[TestClass].fromBson(_).get)
     } yield assert(
       upd.field4 == List(1, 2)
+    )
+  }
+
+  it should "$pulAll primitive elements" in {
+    for {
+      upd <- collection
+        .findOneAndUpdate(
+          query[TestClass](_.field1 == "pullAll"),
+          update[TestClass](
+            _.pullAll(_.field4, List(1, 100))
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+
+    } yield assert(
+      upd.field4 == List(2, 3)
+    )
+  }
+
+  it should "$pulAll documents" in {
+    for {
+      upd <- collection
+        .findOneAndUpdate(
+          query[TestClass](_.field1 == "pullAll"),
+          update[TestClass](
+            _.pullAll(_.field6, lift(List(InnerClass("1", 1)))) // TODO: fix lift for update
+          ),
+          new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .head()
+        .map(BsonDecoder[TestClass].fromBson(_).get)
+    } yield assert(
+      upd.field6 == List(InnerClass("2", 2))
     )
   }
 

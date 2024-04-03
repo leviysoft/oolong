@@ -60,6 +60,8 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
                 MU.Prop(renames.getOrElse(prop.path, prop.path)),
                 MU.QueryWrapper(optimized)
               )
+            case FieldUpdateExpr.PullAll(prop, expr) =>
+              MU.MongoUpdateOp.PullAll(MU.Prop(renames.getOrElse(prop.path, prop.path)), rec(expr))
 
           })
         case UExpr.ScalaCode(code)      => MU.ScalaCode(code)
@@ -110,7 +112,10 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           )("$pop"),
           renderOps(
             ops.collect { case s: MU.MongoUpdateOp.Pull => s }.map(op => render(op.prop) + ": " + render(op.value))
-          )("$pull")
+          )("$pull"),
+          renderOps(
+            ops.collect { case s: MU.MongoUpdateOp.PullAll => s }.map(op => render(op.prop) + ": " + render(op.value))
+          )("$pullAll"),
         ).flatten
           .mkString("{\n", ",\n", "\n}")
 
@@ -179,6 +184,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
         val tAddToSets    = targetOps(ops.collect { case s: MU.MongoUpdateOp.AddToSet => s })
         val tPops         = targetOps(ops.collect { case s: MU.MongoUpdateOp.Pop => s })
         val tPulls        = targetOps(ops.collect { case s: MU.MongoUpdateOp.Pull => s })
+        val tPullAlls     = targetOps(ops.collect { case s: MU.MongoUpdateOp.PullAll => s })
 
         // format: off
         def updaterGroup(groupName: String, updaters: List[Expr[(String, BsonValue)]]): Option[Expr[(String, BsonDocument)]] =
@@ -201,6 +207,7 @@ object MongoUpdateCompiler extends Backend[UExpr, MU, BsonDocument] {
           updaterGroup("$addToSet", tAddToSets),
           updaterGroup("$pop", tPops),
           updaterGroup("$pull", tPulls),
+          updaterGroup("$pullAll", tPullAlls),
         ).flatten
 
         '{

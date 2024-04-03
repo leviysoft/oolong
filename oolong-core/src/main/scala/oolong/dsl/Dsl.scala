@@ -62,4 +62,8 @@ sealed trait Updater[DocT] {
   def pull[PropT, ValueT](selectProp: DocT => Iterable[PropT], input: PropT => Boolean)(using
       PropT =:= ValueT
   ): Updater[DocT] = useWithinMacro("pull")
+
+  def pullAll[PropT, ValueT](selectProp: DocT => Iterable[PropT], input: Iterable[ValueT])(using
+      PropT =:= ValueT
+  ): Updater[DocT] = useWithinMacro("pullAll")
 }

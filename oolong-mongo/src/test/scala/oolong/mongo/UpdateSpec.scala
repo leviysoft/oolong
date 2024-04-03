@@ -274,6 +274,20 @@ class UpdateSpec extends AnyFunSuite {
     )
   }
 
+  test("$pullAll #1") {
+    val q    = update[TestClass](_.pullAll(_.listField, Vector(1, 2, 3)))
+    val repr = renderUpdate[TestClass](_.pullAll(_.listField, Vector(1, 2, 3)))
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "$pullAll" -> BsonDocument(
+          "listField" -> BsonArray(1, 2, 3)
+        )
+      ),
+    )
+  }
+
   test("several update operators combined") {
     val q = update[TestClass](
       _.unset(_.dateField)

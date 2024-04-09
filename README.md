@@ -340,13 +340,13 @@ II Array update operators
 case class Student(id: Int, courses: List[Int])
 
 val q = update[Student](_.addToSet(_.courses, 55))
-// q us {"$addToSet": {"courses": 55}}
+// q is {"$addToSet": {"courses": 55}}
 ```
 In order to append multiple values to array `addToSetAll` should be used:
 
 ```scala
 val q = update[Student](_.addToSetAll(_.courses, List(42, 44, 53)))
-// q us {"$addToSet": {"courses": {$each: [42, 44, 53] }}}
+// q is {"$addToSet": {"courses": {$each: [42, 44, 53] }}}
 ```
 
 2. $pop
@@ -355,10 +355,26 @@ val q = update[Student](_.addToSetAll(_.courses, List(42, 44, 53)))
 case class Student(id: Int, courses: List[Int])
 
 val q = update[Student](_.popHead(_.courses)) // removes the first element
-// q us {"$pop": {"courses": -1}}
+// q is {"$pop": {"courses": -1}}
 
 val q1 = update[Student](_.popLast(_.courses)) // removes the last element
-// q1 us {"$pop": {"courses": 1}}
+// q1 is {"$pop": {"courses": 1}}
+```
+
+3. $pull
+```scala
+case class Student(id: Int, courses: List[Int])
+
+val q = update[Student](_.pull(_.courses, _ >= 42)) 
+// q is {"$pull": {"courses": {"$gte": 42}}}
+```
+4. $pullAll
+
+```scala
+case class Student(id: Int, courses: List[Int])
+
+val q = update[Student](_.pullAll(_.courses, List(5, 10, 42)))
+// q is {"$pullAll": {"courses": [5, 10, 42]}}
 ```
 
 #### Projection

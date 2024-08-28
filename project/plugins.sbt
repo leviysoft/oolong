@@ -1,5 +1,5 @@
 addDependencyTreePlugin
-addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"    % "0.9.34")
+addSbtPlugin("ch.epfl.scala"  % "sbt-scalafix"    % "0.12.1")
 addSbtPlugin("org.scalameta"  % "sbt-scalafmt"    % "2.5.2")
-addSbtPlugin("ch.epfl.scala"  % "sbt-missinglink" % "0.3.2")
-addSbtPlugin("com.github.sbt" % "sbt-ci-release"  % "1.5.10")
+addSbtPlugin("ch.epfl.scala"  % "sbt-missinglink" % "0.3.6")
+addSbtPlugin("com.github.sbt" % "sbt-ci-release"  % "1.6.1")

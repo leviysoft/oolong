@@ -1,5 +1,6 @@
 package oolong
 
+import java.time.Instant
 import java.util.regex.Pattern
 import scala.annotation.tailrec
 import scala.language.postfixOps
@@ -161,6 +162,12 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
 
       case '{ ($x: Option[_]).nonEmpty } =>
         QExpr.Exists(parse(x), QExpr.Constant(true))
+
+      case '{ ($x: Instant).isBefore($s) } =>
+        QExpr.Lt(parse(x), parse(s))
+
+      case '{ ($x: Instant).isAfter($s) } =>
+        QExpr.Gt(parse(x), parse(s))
 
       case PropSelector(name, path) if name == paramName =>
         QExpr.Prop(path.mkString("."))

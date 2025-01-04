@@ -1,5 +1,6 @@
 package oolong.mongo
 
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.regex.Pattern
@@ -1164,6 +1165,36 @@ class QuerySpec extends AnyFunSuite {
       BsonDocument(
         "field" -> BsonInt64(2_000_000_000L)
       )
+    )
+  }
+
+  test("Instant.ifBefore is supported") {
+    case class InstantTest(field: Instant)
+    val q    = query[InstantTest](_.field.isBefore(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+    val repr = renderQuery[InstantTest](_.field.isBefore(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "field" -> BsonDocument("$lt" -> BsonDateTime(1577836800000L))
+      ),
+      ignoreRender = true
+    )
+  }
+
+  test("Instant.isAfter is supported") {
+    case class InstantTest(field: Instant)
+    val q    = query[InstantTest](_.field.isAfter(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+    val repr = renderQuery[InstantTest](_.field.isAfter(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "field" -> BsonDocument("$gt" -> BsonDateTime(1577836800000L))
+      ),
+      ignoreRender = true
     )
   }
 

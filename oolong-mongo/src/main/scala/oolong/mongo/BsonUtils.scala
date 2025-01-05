@@ -19,8 +19,15 @@ private[oolong] object BsonUtils {
       case '{ $s: t } =>
         Expr.summon[BsonEncoder[t]] match {
           case Some(encoder) => '{ ${ encoder }.bson(${ s }) }
-          case _             => report.errorAndAbort(s"Didn't find bson encoder for type ${TypeRepr.of[t].show}")
+          case None if TypeRepr.of[t].isSingleton =>
+            TypeRepr.of[t].widen.asType match {
+              case '[tx] =>
+                Expr.summon[BsonEncoder[tx]] match {
+                  case Some(encoder) => '{ ${ encoder }.bson(${ s.asExprOf[tx] }) }
+                  case _ => report.errorAndAbort(s"Didn't find bson encoder for type ${TypeRepr.of[t].widen.show}")
+                }
+            }
+          case _ => report.errorAndAbort(s"Didn't find bson encoder for type ${TypeRepr.of[t].widen.show}")
         }
     }
-
 }

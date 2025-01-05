@@ -163,10 +163,10 @@ private[oolong] class DefaultAstParser(using quotes: Quotes) extends AstParser {
       case '{ ($x: Option[_]).nonEmpty } =>
         QExpr.Exists(parse(x), QExpr.Constant(true))
 
-      case '{ ($x: Instant).isBefore($s) } =>
+      case '{ ($x: Instant).isBefore($s: Instant) } =>
         QExpr.Lt(parse(x), parse(s))
 
-      case '{ ($x: Instant).isAfter($s) } =>
+      case '{ ($x: Instant).isAfter($s: Instant) } =>
         QExpr.Gt(parse(x), parse(s))
 
       case PropSelector(name, path) if name == paramName =>

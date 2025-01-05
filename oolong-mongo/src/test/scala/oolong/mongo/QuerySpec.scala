@@ -1170,8 +1170,10 @@ class QuerySpec extends AnyFunSuite {
 
   test("Instant.ifBefore is supported") {
     case class InstantTest(field: Instant)
-    val q    = query[InstantTest](_.field.isBefore(lift(Instant.parse("2020-01-01T00:00:00Z"))))
-    val repr = renderQuery[InstantTest](_.field.isBefore(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+
+    val instant = Instant.parse("2020-01-01T00:00:00Z")
+    val q       = query[InstantTest](_.field.isBefore(lift(instant)))
+    val repr    = renderQuery[InstantTest](_.field.isBefore(lift(instant)))
 
     test(
       q,
@@ -1185,8 +1187,10 @@ class QuerySpec extends AnyFunSuite {
 
   test("Instant.isAfter is supported") {
     case class InstantTest(field: Instant)
-    val q    = query[InstantTest](_.field.isAfter(lift(Instant.parse("2020-01-01T00:00:00Z"))))
-    val repr = renderQuery[InstantTest](_.field.isAfter(lift(Instant.parse("2020-01-01T00:00:00Z"))))
+
+    val instant = Instant.parse("2020-01-01T00:00:00Z")
+    val q       = query[InstantTest](_.field.isAfter(lift(instant)))
+    val repr    = renderQuery[InstantTest](_.field.isAfter(lift(instant)))
 
     test(
       q,

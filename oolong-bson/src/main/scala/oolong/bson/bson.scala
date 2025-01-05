@@ -76,7 +76,7 @@ extension (bv: BsonValue)
    *
    * In a case of key collision bson1 values takes priority
    */
-  @inline def :+(other: BsonValue): BsonValue = merge(other, bv, false)
+  @inline def :+(other: BsonValue): BsonValue = merge(bv, other, false)
 
   /**
    * Merges two bson values

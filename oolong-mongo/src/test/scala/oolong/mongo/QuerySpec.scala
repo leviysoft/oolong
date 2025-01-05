@@ -1076,6 +1076,33 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("$all lifted") {
+    case class LotteryTicket(numbers: List[Int])
+
+    val winningNumbers = List(4, 8, 15, 16, 23, 42)
+
+    val q    = query[LotteryTicket](lt => lift(winningNumbers).forall(lt.numbers.contains))
+    val repr = renderQuery[LotteryTicket](lt => lift(winningNumbers).forall(lt.numbers.contains))
+
+    test(
+      q,
+      repr,
+      BsonDocument(
+        "numbers" -> BsonDocument(
+          "$all" -> BsonArray(
+            BsonInt32(4),
+            BsonInt32(8),
+            BsonInt32(15),
+            BsonInt32(16),
+            BsonInt32(23),
+            BsonInt32(42),
+          )
+        )
+      ),
+      ignoreRender = true
+    )
+  }
+
   test("$all with $elemMatch") {
     case class LotteryTicket(numbers: List[Int], series: Long)
 

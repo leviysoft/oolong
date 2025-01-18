@@ -2,7 +2,6 @@ package oolong.bson.meta
 
 import java.time.Instant
 import scala.annotation.nowarn
-import scala.util.Random
 
 import oolong.bson.meta.*
 import oolong.bson.meta.queryMeta

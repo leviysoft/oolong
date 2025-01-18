@@ -111,7 +111,7 @@ object BsonEncoder {
       }
     }
 
-  inline given derived[T]: BsonEncoder[T] = ${ derivedImpl[T] }
+  inline def derived[T]: BsonEncoder[T] = ${ derivedImpl[T] }
 
   def derivedImpl[T: Type](using q: Quotes): Expr[BsonEncoder[T]] =
     import quotes.reflect.*

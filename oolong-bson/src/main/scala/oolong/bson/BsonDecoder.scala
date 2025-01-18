@@ -3,7 +3,6 @@ package oolong.bson
 import scala.util.*
 import scala.util.Try
 
-import magnolia1.*
 import oolong.bson.annotation.*
 import oolong.bson.meta.QueryMeta
 import org.bson.BsonNull

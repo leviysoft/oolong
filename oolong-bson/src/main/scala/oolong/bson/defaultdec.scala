@@ -10,7 +10,6 @@ import java.util.UUID
 import scala.collection.immutable
 import scala.collection.immutable.Map
 import scala.collection.mutable
-import scala.collection.mutable.Builder
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*

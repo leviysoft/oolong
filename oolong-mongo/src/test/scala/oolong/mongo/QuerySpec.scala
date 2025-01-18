@@ -1229,6 +1229,25 @@ class QuerySpec extends AnyFunSuite {
     )
   }
 
+  test("Conditional query with Pattern does not require lifting spec") {
+    case class NameTest(name: String)
+
+    val nOp = Option("some_name")
+    val q = nOp.map { n =>
+      query[NameTest](nt => Pattern.compile(n, Pattern.CASE_INSENSITIVE).matcher(nt.name).matches())
+    }
+    val repr = renderQuery[NameTest](_.name == "some_name")
+
+    test(
+      q.getOrElse(BsonDocument()),
+      repr,
+      BsonDocument(
+        "name" -> BsonDocument("$regex" -> BsonString("some_name"), "$options" -> BsonString("i"))
+      ),
+      ignoreRender = true
+    )
+  }
+
   private inline def test(
       query: BsonDocument,
       repr: String,

@@ -143,6 +143,8 @@ private[oolong] object Utils:
               parseFlagsRec(term)(flags :+ mapNameToFlag(flag))
             case Select(term, "|")              => parseFlagsRec(term)(flags)
             case Select(Ident("Pattern"), flag) => flags :+ mapNameToFlag(flag)
+            case Literal(IntConstant(n)) =>
+              flags ++ (0 until 30).map(1 << _).filter(b => (n & b) != 0)
 
         parseFlagsRec(term)(List.empty)
 

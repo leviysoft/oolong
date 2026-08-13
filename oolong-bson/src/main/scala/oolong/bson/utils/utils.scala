@@ -33,6 +33,29 @@ object AsTerm {
 object TupleLambda {
   def unapply(using quotes: Quotes)(expr: Expr[Any]): Option[(String, String)] =
     import quotes.reflect.*
+
+    object ArrowToLiteral {
+      def unapply(body: Term): Option[(String, String)] =
+        body match
+          // x -> y : Scala 3.9 or earlier
+          case Apply(
+                TypeApply(Select(Apply(_, List(Select(_, first))), "->"), _),
+                List(Literal(StringConstant(second)))
+              ) =>
+            Some(first -> second)
+          // Starting with Scala 3.10, inline `->` expands to a typed Tuple2.apply.
+          // A direct `(field, "name")` is an untyped Apply and remains unsupported.
+          case Typed(
+                Apply(
+                  TypeApply(Select(receiver, "apply"), _),
+                  List(Select(_, first), Literal(StringConstant(second)))
+                ),
+                _
+              ) if receiver.symbol == Symbol.requiredModule("scala.Tuple2") =>
+            Some(first -> second)
+          case _ => None
+    }
+
     expr match
       case AsTerm(
             Block(
@@ -41,12 +64,7 @@ object TupleLambda {
                   "$anonfun",
                   _,
                   _,
-                  Some(
-                    Apply(
-                      TypeApply(Select(Apply(_, List(Select(_, first))), "->"), _),
-                      List(Literal(StringConstant(second)))
-                    )
-                  )
+                  Some(ArrowToLiteral(first, second))
                 )
               ),
               _
